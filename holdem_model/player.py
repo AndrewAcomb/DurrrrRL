@@ -20,7 +20,6 @@ class Player:
         # All-in
         elif bet_amount >= self.chips:
             
-            #TODO: Implement side pots
 
             allin = self.chips
             self.player_bet += allin

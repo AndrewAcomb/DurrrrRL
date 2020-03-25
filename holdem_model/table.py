@@ -1,6 +1,5 @@
 import random
-from . import player, hands
-
+from . import player, rank_hands
 
 class Table:
     players = None
@@ -55,4 +54,59 @@ class Table:
             k.hand.add(self.deck.pop())
             k = k.next_player
 
-    
+    def remove_player(self, player):
+        if self.players is player:
+            self.players = player.next_player
+
+        last = player
+        while last.next_player != player:
+            last = last.next_player
+        last.next_player = player.next_player
+
+        if player.blind > 0:
+            if player.next_player.blind > 0:
+                last.blind = player.blind
+            else:
+                player.next_player.blind = player.blind
+
+
+    def showdown(self):
+        current = self.players
+        hole_dict = {}
+        pot_eligibility = {}
+        player_dict = {}
+
+        for i in range(self.players_in):
+            while current.max_pot < 0:
+                current = current.next_player
+            hole_dict[i] = current.hand
+            pot_eligibility[i] = current.max_pot
+            player_dict[i] = current
+
+            current = current.next_player
+
+        hand_ranks = rank_hands.rank_hands(hole_dict, self.community_cards)
+        
+        winnings = {x:0 for x in pot_eligibility}
+
+        while hand_ranks and self.pots != [0] * len(self.pots):
+
+            split = {x: set({}) for x in range(len(self.pots))}
+            best = [(pot_eligibility[b], b) for b in hand_ranks.pop()]
+
+            for p in best:
+                for i in range(p[0] + 1):
+                    if self.pots[i]:
+                        split[i].add(p[1])
+
+            for s in split:
+                if split[s]:
+                    payout = self.pots[s] // len(split[s])
+                    for p in split[s]:
+                        winnings[p] += payout
+
+        for p in player_dict:
+            player_dict[p].chips += winnings[p]
+            if player_dict[p].chips == 0:
+                self.remove_player(player_dict[p])
+        
