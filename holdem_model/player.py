@@ -1,4 +1,5 @@
 class Player:
+    playerid = -1
     chips = 200
     blind = 0
     hand = set({})
@@ -6,7 +7,8 @@ class Player:
     next_player = None
     max_pot = 0
 
-    def __init__(self, chips, blind=0):
+    def __init__(self,playerid, chips, blind=0):
+        self.playerid = playerid
         self.chips = chips
         self.blind = blind
 
@@ -19,8 +21,6 @@ class Player:
 
         # All-in
         elif bet_amount >= self.chips:
-            
-
             allin = self.chips
             self.player_bet += allin
             self.chips = 0
