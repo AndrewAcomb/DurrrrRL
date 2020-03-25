@@ -1,320 +1,142 @@
 
 
-# ----Get Possible----
-
-def get_possible(community):
-    poss = {}
-
-    # Check if the board is paired
-
-    pb = {c: 0 for c in range(13)}
-    for c in community:
-        pb[c[0]] += 1
-
-    bps = []
-    for item in pb.items():
-        if item[1] > 1:
-            bps.append(item)
-    bps.sort()
-
-    poss['q'] = None if bps else poss_q(community, bps)
-    poss['fh'] = None if bps else poss_fh(community, pb)
-
-    # Check if flushes are possible
-    fsf = {c: 0 for c in range(4)}
-    for c in community:
-        fsf[c[1]] += 1
-        if fsf[c[1]] > 2:
-            f_suit = c[1]
-            fsf = False
-            break
-    
-    poss['f'] = None if fsf else poss_f(community, f_suit)
-
-    # Check if straights are possible
-    
-    poss['s'] = poss_s(community)
-
-    poss['sf'] = None if fsf or not poss['s'] else poss_sf(community, f_suit)
-
-    poss['t'] = poss_t(community)
-
-    poss['2p'] = poss_2p(community, bps)
-
-    return(poss)
-
-
-def poss_q(community, bps):
-    # results[(full hand)] = tiebreaker
-
-    results = {}
-    itr = 0
-    for i in range(len(bps)):
-        template = [(bps[i][0], j) for j in range(4)]
-        for v in range(13):
-            if v==bps[i][0]: continue
-            for s in range(4):
-                results[tuple(sorted(template + [(v, s)], key=lambda x: (x[0], x[1])))] = itr
-            itr += 1
-
-    return(results)
-
-
-def poss_fh(community, pb):
-    # results[(set,pair)] = tiebreaker
-
-    results = {}
-    itr = 0
-    
-    for i in range(13):
-        for j in range(13):
-            if i==j:
-                continue
-            if pb[i] + pb[j] >= 3:
-                results[(i,j)] = itr
-                itr += 1
-
-    return(results)
-
-
-def poss_sf(community, f_suit):
-    # results[(whole hand)] = tiebreaker
-
-    results = {((0,f_suit), (1,f_suit), (2,f_suit), (3,f_suit), (12,f_suit)):0}
-
-    itr = 1
-
-    for i in range(9):
-        results[((i + 0, f_suit), (i + 1, f_suit), (i + 2, f_suit), (i + 3, f_suit), (i + 4, f_suit))] = itr
-        itr += 1
-
-    return(results)
-
-
-def poss_f(community, f_suit):
-    # results[(whole hand)] = tiebreaker
-
-    results = {}
-    suited = []
-    for c in community:
-        if c[1] == f_suit:
-            suited.append(c[0])
-
-    top3 = sorted(suited)[-3:]
-
-    template = [(top3[0], f_suit), (top3[1], f_suit), (top3[2], f_suit)]
-
-    for i in range(12):
-        for j in range(i+1, 13):
-            if i in top3 or j in top3:
-                continue
-            results[tuple(sorted(template + [(i, f_suit), (j, f_suit)], key=lambda x: x[0]))] = itr
-            itr += 1
-
-    return(results)
-
-
-def poss_s(community):
-    # results[(straight (no suits))] = tiebreaker
-
-    results = {}
-    itr = 0
-    vals = {c[0] for c in community}
-
-    if len(vals) < 3:
-        return(None)
-
-    # The wheel
-    if len({0,1,2,3,12} - vals) < 3:
-        results[(0,1,2,3,12)] = 0
-        itr += 1
-
-    for i in range(9):
-        if len({x for x in range(i,i+5)} - vals) < 3:
-            results[tuple([x for x in range(i,i+5)])] = itr
-            itr += 1
-
-    return(results)
-
-def poss_t(community):
-    # results[(trip, 2nd highest, high card)] = tiebreaker
-
-    results = {}
-
-    vals = sorted(list({v[0] for v in community}))
-
-    itr = 0
-    for v in vals:
-        for i in range(12):
-            if i == v:
-                continue
-            for j in range(i+1, 13):
-                if j == v:
-                    continue
-                results[(v, i, j)] = itr
-                itr += 1
-
-    return(results)
-
-
-def poss_2p(community, bps):
-
-    results = {}
-    itr = 0
-    for i in range(12):
-        for j in range(i + 1, 13):
-            for k in range(13):
-                if k not in [i,j]:
-                    results[(j,i,k)] = itr
-                    itr += 1
-
-    return(results)
-
-
-
-
 # ----Get Rank----
 
-def get_rank(playerid, hole_cards, community, possible):
+def get_rank(playerid, hole_cards, community):
     
     cards = hole_cards.union(community)
-
-    hands = set({})
     vals = {}
+    suits = {}
 
-    for card1 in cards:
-        if card1 in vals:
-            vals[card1[0]] += 1
+    for card in cards:
+        if card[0] in vals:
+            vals[card[0]] += 1
         else:
-            vals[card1[0]] = 1
+            vals[card[0]] = 1
 
-        temp = cards - {card1}
-        for card2 in temp:
-            hands.add(tuple(sorted([c for c in temp - {card2}], key = lambda x: (x[0], x[1]))))
+        if card[1] in suits:
+            suits[card[1]] += 1
+        else:
+            suits[card[1]] = 1
 
-    rank = 0
-    tiebreaker = 0
-    multiplicity = sorted([item for item in vals.items()], key=lambda x: x[1], reverse=True)
+    valset = set(vals)
+    vals_arr = sorted(list(vals))
 
-    # SF
-    if possible['sf']:
-        for hand in hands:
-            if hand in possible['sf']:
-                rank = max(rank, 8)
-                tiebreaker = max(tiebreaker, possible['sf'][hand])
-        if rank == 8:
-            return((playerid, rank, tiebreaker))
+    # Find highest quads, trips, and pairs
+    multiplicity = sorted([item for item in vals.items()], key=lambda x: (x[1], x[0]), reverse=True)
 
-    # Q
-    if possible['q'] and multiplicity[0][1] == 4:
-        for hand in hands:
-            if hand in possible['q']:
-                rank = max(rank, 7)
-                tiebreaker = max(tiebreaker, possible['q'][hand])
-        if rank == 7:
-            return((playerid, rank, tiebreaker))
+    # Find flushes
+    flush = []
+    flushsuit = None
+    for k,v in suits.items():
+        if v < 5: continue
+        flushsuit = k
 
-    # FH
-    if possible['fh']:
-        if multiplicity[0][1] >= 3 and multiplicity[1][1] >= 2:
-            trips = []
-            pairs = []
-            for m in multiplicity:
-                if m[1] >= 3:
-                    trips.append(m[0])
-                    pairs.append(m[0])
-                elif m[1] == 2:
-                    pairs.append(m[0])
+        for card in cards:
+            if card[1] == flushsuit:
+                flush.append(card[0])
+
+        flush = sorted(flush, reverse=True)
+        break
+
+    # Find straights
+    straights = []
+    if len(vals_arr) >= 5: 
+        # The wheel
+        if {0,1,2,3,12} <= valset:
+            straights.append(3)
+
+        for i in range(4, len(vals_arr)):
+            in_row = 4
+
+            while in_row:
+                offset = (5 - in_row)
+                if vals_arr[i] == vals_arr[i - offset] + offset:
+                    in_row -= 1
                 else:
                     break
-            trips.sort()
-            pairs.sort()
-            t = trips[-1]
-            p = pairs[-2] if t==pairs[-1] else pairs[-1]
-            return((playerid, 6, possible['q'][(t,t,t,p,p)]))
 
+            if not in_row:
+                straights.append(vals_arr[i])
 
-    # F
-    if possible['f']:
-        for hand in hands:
-            if hand in possible['f']:
-                rank = 5
-                tiebreaker = max(tiebreaker, possible['f'][hand])
-        if rank == 5:
-            return((playerid, rank, tiebreaker))
+    # Straight Flush
+    if straights and flushsuit:
+        flushset = set(flush)
 
-    # S
-    if possible['s']:
-        if len(vals) < 5:
-            for i in reversed(range(min(vals) + 5, max(vals) + 1)):
-                if {x for x in range(i-5, i)} <= set(vals):
-                    return((playerid, 4, possible['s'][tuple([x for x in range(i-5, i)])]))
+        for s in reversed(straights):
+            if {x for x in range(s-4,s+1)} <= flushset:
+                return((playerid, 8, s))
 
-    # 3
+        # The wheel
+        if {0,1,2,3,12} <= flushset:
+            return((playerid, 8, 3))
+
+    # Four of a Kind
+    if multiplicity[0][1] == 4:
+        single = max(valset - set({multiplicity[0][0]}))
+        return((playerid, 7, to_tb([multiplicity[0][0], single])))
+
+    # Full House
+    if  multiplicity[0][1] >= 3 and multiplicity[1][1] >= 2:
+        return((playerid, 6, to_tb([multiplicity[0][0],multiplicity[1][0]])))
+
+    # Flush
+    if flushsuit:
+        return((playerid, 5, to_tb(flush[:5])))
+
+    # Straight
+    if straights:
+        return((playerid, 4, straights[-1]))
+
+    # Three of a Kind
     if multiplicity[0][1] == 3:
-        vals_arr = sorted([x for x in vals], reverse=True)
-        if vals_arr[0] == multiplicity[0][0]:
-            return((playerid, 3, possible['t'][(multiplicity[0][0], vals_arr[4], vals_arr[3])]))
-        else:
-            return((playerid, 3, possible['t'][(multiplicity[0][0], vals_arr[1], vals_arr[0])]))
+        n = vals_arr[-1] == multiplicity[0][0]
+        return((playerid, 3, to_tb([multiplicity[0][0], vals_arr[-1 - n], vals_arr[-2 - n]])))
 
-    # 2P
+    # Two Pair
     if multiplicity[0][1] == multiplicity[1][1] == 2:
-        pairs = []
-        for m in multiplicity:
-            if m[1] == 2:
-                pairs.append(m[0])
-        pairs.sort(reverse=True)
-        pairs.pop()
-        return(playerid, 2, possible['2p'][(pairs[0], pairs[1], max(vals - set(pairs)))])
+        single = max(valset - {multiplicity[0][0], multiplicity[1][0]})
+        return((playerid, 2, to_tb([multiplicity[0][0], multiplicity[1][0], single])))
 
-    # P
-
+    # Pair
     if multiplicity[0][1] == 2:
-        others = sorted(list(set(vals) - set(multiplicity[0][0])), reverse=True)
-        inorder = [multiplicity[0][0]] + others[:3]
-        tb = ''
-        for o in inorder:
-            if len(str(o)) < 2:
-                tb += '0' + str(o)
-            else:
-                tb += str(o)
+        others = sorted(list(valset - set(multiplicity[0][0])), reverse=True)
+        return((playerid, 1, to_tb([multiplicity[0][0]] + others[:3])))
 
-        return((playerid, 1, tb))
+    # High Card
+    inorder = sorted(vals_arr, reverse=True)[:5]
+    return((playerid, 0, to_tb(inorder)))
 
-    # HC
 
-    inorder = sorted(list(vals), reverse=True)
+def to_tb(arr):
+    # Generate tiebreaker from hand
 
-    tb = ''
-    for o in inorder:
-        if len(str(o)) < 2:
-            tb += '0' + str(o)
+    tb = ''   
+    for a in arr:
+        s = str(a)
+        if len(s) < 2:
+            tb += '0' + s
         else:
-            tb += str(o)
-    return((playerid, 0, int(tb)))
+            tb += s
+    return(int(tb))
 
 
 
 # ----Rank Hands----
 
 def rank_hands(hole_dict, community):
-    
+
     hand_ranks = []
 
-    possible = get_possible(community)
-
     for k, v in hole_dict.items():
-        hand_ranks.append(get_rank(k, v, community, possible))
+        hand_ranks.append(get_rank(k, v, community))
 
     hand_ranks.sort(lambda x: (x[1],x[2]), reverse=True)
-
     prev = hand_ranks[-1]
     results = [[hand_ranks.pop()[0]]]
 
-
+    # Abstract rank and tiebreaker away
     while hand_ranks:
-    
         if hand_ranks[-1][1] == prev[1] and hand_ranks[-1][2] == prev[2]:
             results[-1].append(hand_ranks.pop()[0])
         else:

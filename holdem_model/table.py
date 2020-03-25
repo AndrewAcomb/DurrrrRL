@@ -1,5 +1,4 @@
 import random
-import copy
 from . import player, rank_hands
 
 class Table:
@@ -13,10 +12,6 @@ class Table:
     players_in = 0
     
     def __init__(self, num_players=2, buy_in=200, little_blind=1, big_blind=2):
-
-        assert (buy_in >= 10 * big_blind), "Initial stacks must be >= 10 big blinds"
-        assert (num_players > 1 and num_players < 24), "There must be 2-23 players."
-        assert (big_blind >= little_blind), "Big blind can't be < little blind."
 
         self.num_players = num_players
 
