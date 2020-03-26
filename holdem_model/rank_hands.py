@@ -22,8 +22,10 @@ def get_rank(playerid, hole_cards, community):
     valset = set(vals)
     vals_arr = sorted(list(vals))
 
+
     # Find highest quads, trips, and pairs
     multiplicity = sorted([item for item in vals.items()], key=lambda x: (x[1], x[0]), reverse=True)
+
 
     # Find flushes
     flush = []
@@ -38,6 +40,7 @@ def get_rank(playerid, hole_cards, community):
 
         flush = sorted(flush, reverse=True)
         break
+
 
     # Find straights
     straights = []
@@ -59,14 +62,14 @@ def get_rank(playerid, hole_cards, community):
             if not in_row:
                 straights.append(vals_arr[i])
 
+
     # Straight Flush
-    if straights and flushsuit:
+    if straights and flush:
         flushset = set(flush)
 
         for s in reversed(straights):
             if {x for x in range(s-4,s+1)} <= flushset:
                 return((playerid, 8, s))
-
         # The wheel
         if {0,1,2,3,12} <= flushset:
             return((playerid, 8, 3))
@@ -81,7 +84,7 @@ def get_rank(playerid, hole_cards, community):
         return((playerid, 6, to_tb([multiplicity[0][0],multiplicity[1][0]])))
 
     # Flush
-    if flushsuit:
+    if flush:
         return((playerid, 5, to_tb(flush[:5])))
 
     # Straight
@@ -100,7 +103,7 @@ def get_rank(playerid, hole_cards, community):
 
     # Pair
     if multiplicity[0][1] == 2:
-        others = sorted(list(valset - set(multiplicity[0][0])), reverse=True)
+        others = sorted(list(valset - {multiplicity[0][0]}), reverse=True)
         return((playerid, 1, to_tb([multiplicity[0][0]] + others[:3])))
 
     # High Card
@@ -126,21 +129,9 @@ def to_tb(arr):
 
 def rank_hands(hole_dict, community):
 
-    hand_ranks = []
+    hand_ranks = {}
 
     for k, v in hole_dict.items():
-        hand_ranks.append(get_rank(k, v, community))
-
-    hand_ranks.sort(lambda x: (x[1],x[2]), reverse=True)
-    prev = hand_ranks[-1]
-    results = [[hand_ranks.pop()[0]]]
-
-    # Abstract rank and tiebreaker away
-    while hand_ranks:
-        if hand_ranks[-1][1] == prev[1] and hand_ranks[-1][2] == prev[2]:
-            results[-1].append(hand_ranks.pop()[0])
-        else:
-            prev = hand_ranks.pop()
-            results.append([prev[0]])
-
-    return(results)
+        hand_ranks[k] = (get_rank(k, v, community))
+    
+    return(hand_ranks)
