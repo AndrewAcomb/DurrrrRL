@@ -10,19 +10,95 @@ def random_card():
 REPEAT_RANDOM_TESTS = 1000
 
 
-class TestShowdown(unittest.TestCase):
-    def testShowdown(self):
-        pass
+
+# class TestShowdown(unittest.TestCase):
+#     def testShowdown(self):
+#         t = table.Table(num_players=10)
+
+#         while t.num_players > 1:
+
+#             for p in t.players_dict.values():
+
+#                 p.max_pot = random.randint(0,p.chips)
+
+#                 # if p.chips < 100:
+#                 #     p.max_pot = p.chips
+#                 # else:
+#                 #     p.max_pot = 100
+                    
+#                 p.chips -= p.max_pot
+
+#             printer = t.num_players > 2
+
+#             if printer:
+#                 print({k:(v.chips, v.max_pot) for k,v in t.players_dict.items()})
+    
+
+#             t.deal(to_players=True)
+#             for _ in range(5):
+#                 t.deal()
+
+
+#             t.showdown()
+
+#             if t.num_players > 2:
+#                 print({k:(v.chips, v.max_pot) for k,v in t.players_dict.items()}, '\n\n')
+        
+#         self.assertEqual(len(t.players_dict), 1)
+#         self.assertEqual(len(t.players_dict), t.num_players)
+
+#         remaining = [v for v in t.players_dict.values()].pop()
+#         self.assertEqual(remaining.chips, 2000)
+
+
+#     def testGetPayouts(self):
+#         for _ in range(REPEAT_RANDOM_TESTS):
+
+#             t = table.Table(num_players=10, buy_in=0)
+
+#             to_fold = random.sample({x for x in range(10)}, random.randint(0,8))
+
+#             highest_remaining = -1
+#             compare_to_results = {}
+
+#             for pid, p in t.players_dict.items():
+#                 if pid not in to_fold:
+#                     p.max_pot = random.randint(2,200)
+#                     highest_remaining = max(highest_remaining, p.max_pot)
+#                     compare_to_results[pid] = p.max_pot
+#                     t.pot += p.max_pot
+            
+#             for pid, p in t.players_dict.items():
+#                 if pid in to_fold:
+#                     p.folded = True
+#                     p.max_pot = random.randint(0,highest_remaining - 1)
+#                     compare_to_results[pid] = p.max_pot
+#                     t.pot += p.max_pot
+            
+
+#             pot_total = t.pot
+
+#             t.deal(to_players=True)
+#             for _ in range(5):
+#                 t.deal()
+
+#             results = t.get_payouts()
+            
+#             total_earnings = sum(results.values())
+
+#             self.assertEqual(pot_total, total_earnings)
+
+        
 
 # class TestTableConstructor(unittest.TestCase):
 #     def testConstructor(self):
-#         #for _ in range(REPEAT_RANDOM_TESTS):
-#         for i in range(3,11):
+        # #for _ in range(REPEAT_RANDOM_TESTS):
+        # for i in range(3,11):
 
-#             pids = [x for x in range(i)]
-#             random.shuffle(pids)
-#             removed = set({}) 
-#             t = table.Table(num_players=i)
+        #     pids = [x for x in range(i)]
+        #     random.shuffle(pids)
+        #     removed = set({}) 
+        #     t = table.Table(num_players=i)
 
 #             for j in range(i-1):
 

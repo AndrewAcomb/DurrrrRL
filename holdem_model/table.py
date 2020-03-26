@@ -9,6 +9,8 @@ class Table:
     table_bet = 0
     num_players = 0
     players_in = 0
+    little_blind = 1
+    big_blind = 2
     
     def __init__(self, num_players=2, buy_in=200, little_blind=1, big_blind=2):
         self.deck = [(i,j) for i in range(13) for j in range(4)]
@@ -16,6 +18,8 @@ class Table:
         self.players_dict = {}
         self.pot = 0
         self.num_players = num_players
+        self.little_blind = little_blind
+        self.big_blind = big_blind
 
         # Create big and little blind players
         lb = player.Player(0, buy_in, little_blind)
@@ -71,7 +75,7 @@ class Table:
 
 
 
-    def showdown(self):
+    def get_payouts(self):
         
         earnings = {}
         hands = {}
@@ -80,12 +84,11 @@ class Table:
         max_max_pot = max({v.max_pot for v in self.players_dict.values()})
 
         for pid, p in self.players_dict.items():
+            earnings[pid] = 0
+            hands[pid] = p.hand
             main_pot[2] += p.max_pot
             if p.folded: 
                 continue
-
-            earnings[pid] = 0
-            hands[pid] = p.hand
 
             if p.chips == 0 and p.max_pot < max_max_pot:
                 allin = [p.max_pot, set({}), 0]
@@ -119,25 +122,75 @@ class Table:
 
         for pot in allins:
             pot_ranks = []
+
+            # get and sort pot_ranks, the ranks of those eligible to win the pot
             for p, r in rankings.items():
-                if p not in pot[1]: continue
+                if p not in pot[1] or self.players_dict[p].folded: 
+                    continue
                 pot_ranks.append(r)
-            pot_ranks.sort(key=lambda x: (x[1],x[2]))
-            split = [pot_ranks.pop()]
+            pot_ranks.sort(key=lambda x: (x[1],x[2]), reverse=True)
+
+            # Split contains the ids of all the winners of the pot
+            winning_rank = pot_ranks.pop(0)
+            split = [winning_rank[0]]
+
             if pot_ranks:
                 for pr in pot_ranks:
-                    if pr[1] == split[0][1] and pr[2] == split[0][2]:
-                        split.append(pr)
+                    if pr[1] == winning_rank[1] and pr[2] == winning_rank[2]:
+                        split.append(pr[0])
                     else:
                         break
-            s = len(split)
+            
             sp = pot[2]
-            rem = sp % s
-            for pl in split:
-                earnings[pl[0]] += (sp - rem) // s
-            for pl in split:
-                earnings[pl[0]] += 1
-                rem -= 1
-                if not rem: break
+            rem = sp % len(split)
+
+            for p in split:
+                earnings[p] += (sp - rem) // len(split)
+            if rem:
+                for p in split:
+                    earnings[p] += 1
+                    rem -= 1
+                    if not rem: break
+
+        return(earnings)
 
 
+    
+    def showdown(self):
+        
+        # Determine winners and distribute payouts
+        payouts = self.get_payouts()
+        for p in payouts:
+            self.players_dict[p].chips += payouts[p]
+
+
+        # Reset hands and deck
+        self.deck = [(i,j) for i in range(13) for j in range(4)]
+        self.community_cards = set({})
+
+        out_players = []
+        for k, v in self.players_dict.items():
+            if v.chips == 0:
+                out_players.append(k)
+            v.hand = set({})
+            v.folded = False
+
+
+        # Remove players who are out of chips
+        for o in out_players:
+
+            print("Player {} has been eliminated!".format(o))
+            self.remove_player(o)
+
+
+        # Move the blinds
+        if self.num_players < 2: return
+        current = self.players_dict[max(self.players_dict)]
+
+        for _ in range(self.num_players):
+            if current.blind != self.little_blind:
+                current = current.next_player
+
+        hold = current.blind
+        current.next_player.next_player.blind = current.next_player.blind
+        current.next_player.blind = hold
