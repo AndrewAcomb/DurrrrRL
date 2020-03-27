@@ -29,12 +29,12 @@ class Table:
         lb.next_player = bb
         last = bb
 
-        # Create the rest of the players
-        for i in range(2, num_players):
-            temp = player.Player(i, buy_in)
-            self.players_dict[i] = temp
-            last.next_player = temp
-            last = temp
+        # # Create the rest of the players
+        # for i in range(2, num_players):
+        #     temp = player.Player(i, buy_in)
+        #     self.players_dict[i] = temp
+        #     last.next_player = temp
+        #     last = temp
         
         last.next_player = lb
 
@@ -56,28 +56,7 @@ class Table:
 
 
 
-    def remove_player(self, pid):
-        player = self.players_dict[pid]
-
-        # Remove player from circularly linked list
-        last = player
-        while last.next_player != player:
-            last = last.next_player
-        last.next_player = player.next_player
-
-        # Ensure both blinds remain in play
-        if player.blind > 0:
-            if player.next_player.blind > 0:
-                last.blind = player.blind
-            else:
-                player.next_player.blind = player.blind
-
-        self.num_players -= 1
-        del(self.players_dict[pid])
-
-
-
-    def showdown_heads_up(self):
+    def showdown(self):
         hands = {}
         bets = []
         for k,v in self.players_dict.items():
@@ -95,9 +74,9 @@ class Table:
             for v in self.players_dict.values():
                 v.chips += v.chips_in
         else:
-            self.players_dict[rankings[1][0]].chips += 2 * self.players_dict[rankings[1][0]].chips_in
+            self.players_dict[rankings[1][0]].chips += self.pot
 
-        # Reset max pot
+        # Reset chips in
         for v in self.players_dict.values():
             v.chips_in = 0
 
@@ -110,12 +89,27 @@ class Table:
         self.players_dict[rankings[1][0]].bling = self.players_dict[rankings[0][0]]
         self.players_dict[rankings[0][0]].blind = hold
 
-        # Remove bankrupt player, if there is one
-        if not self.players_dict[rankings[1][0]].chips:
-            self.remove_player(rankings[1][0])
-            return(True)
-        else:
-            return(False)
+
+
+    def no_showdown(self, playerid):
+
+        # Pay out
+        self.players_dict[playerid].chips += self.pot
+        self.pot = 0
+
+        # Reset chips in
+        for v in self.players_dict.values():
+            v.chips_in = 0
+
+        # Reset hands and deck
+        self.deck = [(i,j) for i in range(13) for j in range(4)]
+        self.community_cards = set({})
+
+        # Move the blinds
+        hold = self.players_dict[playerid].blind
+        self.players_dict[playerid].blind = self.players_dict[playerid].next_player.blind
+        self.players_dict[playerid].next_player.blind = hold
+
 
 
     def get_to_call(self, pid):
@@ -129,6 +123,28 @@ class Table:
         return(highest - self.players_dict[pid].chips_in)
 
 
+
+
+
+
+    # def remove_player(self, pid):
+    #     player = self.players_dict[pid]
+
+    #     # Remove player from circularly linked list
+    #     last = player
+    #     while last.next_player != player:
+    #         last = last.next_player
+    #     last.next_player = player.next_player
+
+    #     # Ensure both blinds remain in play
+    #     if player.blind > 0:
+    #         if player.next_player.blind > 0:
+    #             last.blind = player.blind
+    #         else:
+    #             player.next_player.blind = player.blind
+
+    #     self.num_players -= 1
+    #     del(self.players_dict[pid])
 
 
     # def get_payouts(self):

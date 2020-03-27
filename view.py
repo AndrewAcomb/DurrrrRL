@@ -49,4 +49,18 @@ class UIView(View):
         
 
 
+class AgentView(View):
+    model = None
+    playerid = 0
 
+    def show_model_state(self):
+        pass
+
+    def show_showdown_results(self):
+        pass
+
+    def show_history(self):
+        pass
+
+    def show_player_action(self, pid, prev_pot, to_call, action):
+        pass

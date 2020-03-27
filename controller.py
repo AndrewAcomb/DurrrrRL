@@ -13,6 +13,15 @@ class Controller:
     def get_action(self):
         pass
 
+
+class AgentController(Controller):
+    player = None
+    model = None
+    
+    def get_action(self):
+        pass
+
+
 class HumanController(Controller):
     player = None
     model = None
@@ -97,8 +106,6 @@ class HumanController(Controller):
             return(result)
             
 
-                
-
 class RandomController(Controller):
     player = None
     model = None
@@ -119,9 +126,3 @@ class RandomController(Controller):
             else:
                 raise_amount = random.randint(to_call, self.player.chips)
                 self.player.action(to_call, raise_amount)
-
-
-class AgentController(Controller):
-    player = None
-    model = None
-
