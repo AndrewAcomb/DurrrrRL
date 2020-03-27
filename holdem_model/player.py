@@ -4,7 +4,7 @@ class Player:
     blind = 0
     hand = set({})
     next_player = None
-    max_pot = 0
+    chips_in = 0
     folded = False
 
     def __init__(self,playerid, chips, blind=0):
@@ -17,7 +17,7 @@ class Player:
     def action(self, to_call, bet_amount):
 
         # Fold
-        if bet_amount < min(self.chips,(to_call - self.max_pot)):
+        if bet_amount < to_call:
             self.folded = True
             return(0)
 
@@ -25,13 +25,18 @@ class Player:
         elif bet_amount >= self.chips:
             allin = self.chips
             self.chips = 0
-            self.max_pot += allin
-            return(allin)
+            self.chips_in += allin
+            return(4)
 
         # Call or non-all-in raise
         else:
             self.chips -= bet_amount
-            self.max_pot += bet_amount
-            return(bet_amount)
+            self.chips_in += bet_amount
+            if bet_amount - to_call:
+                return(3)
+            elif to_call:
+                return(2)
+            else:
+                return(1)
 
 
