@@ -2,37 +2,39 @@ import random
 from . import player, rank_hands as rh
 
 class Table:
-    players_dict = {}
+    players = {}
     deck = []
     pot = 0
     community_cards = set({})
     table_bet = 0
     num_players = 0
-    players_in = 0
     little_blind = 1
     big_blind = 2
+    opponent = {}
     
     def __init__(self, num_players=2, buy_in=200, little_blind=1, big_blind=2):
         self.deck = [(i,j) for i in range(13) for j in range(4)]
         self.community_cards = set({})
-        self.players_dict = {}
+        self.players = {}
         self.pot = 0
         self.num_players = num_players
         self.little_blind = little_blind
         self.big_blind = big_blind
 
         # Create big and little blind players
-        lb = player.Player(0, buy_in, little_blind)
-        self.players_dict[0] = lb
-        bb = player.Player(1, buy_in, big_blind)
-        self.players_dict[1] = bb
+        lb = player.Player(1, buy_in, little_blind)
+        self.players[1] = lb
+        self.opponent[1] = 2
+        bb = player.Player(2, buy_in, big_blind)
+        self.players[2] = bb
+        self.opponent[2] = 1
         lb.next_player = bb
         last = bb
 
         # # Create the rest of the players
         # for i in range(2, num_players):
         #     temp = player.Player(i, buy_in)
-        #     self.players_dict[i] = temp
+        #     self.players[i] = temp
         #     last.next_player = temp
         #     last = temp
         
@@ -50,7 +52,7 @@ class Table:
         if not deterministic:
             random.shuffle(self.deck)
     
-        for p in self.players_dict.values():
+        for p in self.players.values():
             p.hand.add(self.deck.pop())
             p.hand.add(self.deck.pop())
 
@@ -59,76 +61,83 @@ class Table:
     def showdown(self):
         hands = {}
         bets = []
-        for k,v in self.players_dict.items():
+        for k,v in self.players.items():
             hands[k] = v.hand
             bets.append((v.chips_in, k))
 
         # Deal with all-in
         bets.sort()
         if bets[1][0] > bets[0][0]:
-            self.players_dict[bets[1][1]].chips += bets[1][0] - bets[0][0]
+            self.players[bets[1][1]].chips += bets[1][0] - bets[0][0]
+            self.pot -= bets[1][0] - bets[0][0]
+
 
         # Rank hands, determine winner, and pay out
         rankings = sorted([v for v in rh.rank_hands(hands, self.community_cards).values()], key=lambda x: (x[1], x[2]))
         if rankings[0][1] == rankings[1][1] and rankings[0][2] == rankings[1][2]:
-            for v in self.players_dict.values():
+            for v in self.players.values():
                 v.chips += v.chips_in
+            result = [rankings[1], self.pot, self.community_cards, self.players[1].hand, self.players[2].hand]
         else:
-            self.players_dict[rankings[1][0]].chips += self.pot
+            self.players[rankings[1][0]].chips += self.pot
+            result = [rankings, self.pot, self.community_cards, self.players[1].hand, self.players[2].hand]
 
-        # Reset chips in
-        for v in self.players_dict.values():
+        # Reset chips in the pot
+        for v in self.players.values():
             v.chips_in = 0
+        self.pot = 0
 
         # Reset hands and deck
         self.deck = [(i,j) for i in range(13) for j in range(4)]
         self.community_cards = set({})
+        for v in self.players.values():
+            v.hand = set({})
 
-        # Move the blinds
-        hold = self.players_dict[rankings[1][0]].blind
-        self.players_dict[rankings[1][0]].bling = self.players_dict[rankings[0][0]]
-        self.players_dict[rankings[0][0]].blind = hold
+        self.move_blinds()
 
+        return(result)
 
 
     def no_showdown(self, playerid):
 
         # Pay out
-        self.players_dict[playerid].chips += self.pot
+        self.players[playerid].chips += self.pot
         self.pot = 0
 
         # Reset chips in
-        for v in self.players_dict.values():
+        for v in self.players.values():
             v.chips_in = 0
 
         # Reset hands and deck
         self.deck = [(i,j) for i in range(13) for j in range(4)]
         self.community_cards = set({})
+        for v in self.players.values():
+            v.hand = set({})
 
-        # Move the blinds
-        hold = self.players_dict[playerid].blind
-        self.players_dict[playerid].blind = self.players_dict[playerid].next_player.blind
-        self.players_dict[playerid].next_player.blind = hold
+        self.move_blinds()
 
 
 
     def get_to_call(self, pid):
-        current = self.players_dict[pid]
-        highest = current.chips_in
-
-        for _ in range(self.num_players):
-            current = current.next_player
-            highest = max(highest, current.chips_in)
-        
-        return(highest - self.players_dict[pid].chips_in)
+        return(self.players[self.opponent[pid]].chips_in - self.players[pid].chips_in)
 
 
+    def move_blinds(self):
+        for v in self.players.values():
+            if v.blind == self.little_blind:
+                v.blind = self.big_blind
+            else:
+                v.blind = self.little_blind
 
 
-
+    def update_pot(self):
+        newpot = 0
+        for v in self.players.values():
+            newpot += v.chips_in
+        self.pot = newpot
 
     # def remove_player(self, pid):
-    #     player = self.players_dict[pid]
+    #     player = self.players[pid]
 
     #     # Remove player from circularly linked list
     #     last = player
@@ -144,7 +153,7 @@ class Table:
     #             player.next_player.blind = player.blind
 
     #     self.num_players -= 1
-    #     del(self.players_dict[pid])
+    #     del(self.players[pid])
 
 
     # def get_payouts(self):
@@ -153,9 +162,9 @@ class Table:
     #     hands = {}
     #     allins = []
     #     main_pot = [0,set({}), 0]
-    #     max_chips_in = max({v.chips_in for v in self.players_dict.values()})
+    #     max_chips_in = max({v.chips_in for v in self.players.values()})
 
-    #     for pid, p in self.players_dict.items():
+    #     for pid, p in self.players.items():
     #         earnings[pid] = 0
     #         hands[pid] = p.hand
     #         main_pot[2] += p.chips_in
@@ -172,7 +181,7 @@ class Table:
     #     allins.sort(key=lambda x: x[0])
 
     #     for i in range(len(allins)):
-    #         for pid, p in self.players_dict.items():
+    #         for pid, p in self.players.items():
     #             if not p.chips_in:
     #                 continue
     #             elif p.chips_in < allins[i][0]:
@@ -197,7 +206,7 @@ class Table:
 
     #         # get and sort pot_ranks, the ranks of those eligible to win the pot
     #         for p, r in rankings.items():
-    #             if p not in pot[1] or self.players_dict[p].folded: 
+    #             if p not in pot[1] or self.players[p].folded: 
     #                 continue
     #             pot_ranks.append(r)
     #         pot_ranks.sort(key=lambda x: (x[1],x[2]), reverse=True)
@@ -233,7 +242,7 @@ class Table:
     #     # Determine winners and distribute payouts
     #     payouts = self.get_payouts()
     #     for p in payouts:
-    #         self.players_dict[p].chips += payouts[p]
+    #         self.players[p].chips += payouts[p]
 
 
     #     # Reset hands and deck
@@ -241,7 +250,7 @@ class Table:
     #     self.community_cards = set({})
 
     #     out_players = []
-    #     for k, v in self.players_dict.items():
+    #     for k, v in self.players.items():
     #         v.chips_in = 0
     #         if v.chips == 0:
     #             out_players.append(k)
@@ -256,7 +265,7 @@ class Table:
 
     #     # Move the blinds
     #     if self.num_players < 2: return(True)
-    #     current = self.players_dict[max(self.players_dict)]
+    #     current = self.players[max(self.players)]
 
     #     for _ in range(self.num_players):
     #         if current.blind != self.little_blind:

@@ -26,16 +26,21 @@ class Player:
             allin = self.chips
             self.chips = 0
             self.chips_in += allin
+            if to_call >= allin:
+                return(5)
             return(4)
 
         # Call or non-all-in raise
         else:
             self.chips -= bet_amount
             self.chips_in += bet_amount
+            # Raise
             if bet_amount - to_call:
                 return(3)
+            # Call
             elif to_call:
                 return(2)
+            # Check
             else:
                 return(1)
 
