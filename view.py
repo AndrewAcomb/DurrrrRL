@@ -55,7 +55,7 @@ class UIView(View):
 
         hand = self.model.players[self.playerid].hand
         print('Hand: ' + ' '.join([self.card_to_string(card) for card in hand]))
-        if self.model.community_cards:
+        if True:#self.model.community_cards:
             print('Community: ' + ' '.join([self.card_to_string(card) for card in self.model.community_cards]))    
             best = rank_hands.get_rank(self.playerid, hand, self.model.community_cards)   
             print("The best hand you currently have is {}".format(self.hand_to_string(best[1])))

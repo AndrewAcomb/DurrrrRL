@@ -51,7 +51,7 @@ class Game:
         #print(self.model.pot, self.model.players[1].chips_in, self.model.players[2].chips_in)
 
         if not allin:
-            folded, allin = self.round_of_betting(lb)
+            folded, allin = self.round_of_betting(lb, preflop=True)
             if folded:
                 for v in self.controllers.values():
                     if v.view:
@@ -91,8 +91,8 @@ class Game:
 
     def round_of_betting(self, lb, preflop=False):
 
-        # Little blinds is first to act
-        current = lb
+        # Lb is first to act preflop, then bb after (heads-up rules are weird)
+        current = lb if preflop else self.model.opponent[lb]
         
         last_pot = self.model.pot
         last_action = 0

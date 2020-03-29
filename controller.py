@@ -42,7 +42,7 @@ class HumanController(Controller):
     def help(self):
         print("Valid commands: 'fold', 'call', 'check', 'raise x', 'view cards', 'view chips'")
         print("'raise' must be followed by a value you want to raise by.")
-        print("To go all-in, enter 'raiseto allin'")
+        print("To go all-in, enter 'raise allin'")
         print("To see your cards, 'view cards'. To see your chips and the pot, 'view chips'")
         print("Type 'exit' to quit the game.")
 
@@ -62,7 +62,6 @@ class HumanController(Controller):
 
         return
             
-
 
     def call(self, to_call, check=False):
         if check and to_call:
@@ -85,10 +84,16 @@ class HumanController(Controller):
         if amount == None:
             print("You must specify an amount to bet.")
             return
+        
 
         self.finished = True
         if amount == 'allin':
             return(self.player.action(to_call, self.player.chips))
+        
+        elif not amount.isdigit():
+            print("You must specify an numeric amount to bet, or exactly 'raise allin'")
+            return
+
         elif int(amount) > self.player.chips:
             print("This would put you all-in. Is that okay? Type y/n.")
             if input()[0] in ['y','Y']:
@@ -102,7 +107,7 @@ class HumanController(Controller):
         
 
     def get_action(self, to_call):
-        valid_actions = ['help','fold','call', 'check', 'bet', 'raise', 'see', 'view', 'exit']
+        #valid_actions = ['help','fold','call', 'check', 'bet', 'raise', 'see', 'view', 'exit']
         result = None
         self.finished = False
 
@@ -120,6 +125,9 @@ class HumanController(Controller):
 
         while not self.finished:
             response = input().split()
+            if not response:
+                print("You must enter an action.")
+                continue
             action = response[0]
             value = response[1] if len(response) > 1 else None
             

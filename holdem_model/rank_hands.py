@@ -97,7 +97,7 @@ def get_rank(playerid, hole_cards, community):
         return((playerid, 3, to_tb([multiplicity[0][0], vals_arr[-1 - n], vals_arr[-2 - n]])))
 
     # Two Pair
-    if multiplicity[0][1] == multiplicity[1][1] == 2:
+    if len(multiplicity) > 1 and multiplicity[0][1] == multiplicity[1][1] == 2:
         single = max(valset - {multiplicity[0][0], multiplicity[1][0]})
         return((playerid, 2, to_tb([multiplicity[0][0], multiplicity[1][0], single])))
 
