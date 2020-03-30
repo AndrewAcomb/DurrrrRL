@@ -1,25 +1,25 @@
-from holdem_model import table
+import holdem_model.table
 from view import UIView
 import random
 
 class Controller:
-    player = None
+    playerid = None
     model = None
     view = None
     
-    def __init__(self, model, player, show_output):
-        self.player = player
+    def __init__(self, model, playerid, show_output):
+        self.playerid = playerid
         self.model = model
 
         if show_output:
-            self.view = UIView(model, player.playerid)
+            self.view = UIView(model, playerid)
 
     def get_action(self):
         pass
 
 
 class AgentController(Controller):
-    player = None
+    playerid = None
     model = None
     view = None
     
@@ -28,16 +28,15 @@ class AgentController(Controller):
 
 
 class HumanController(Controller):
-    player = None
+    playerid = None
     model = None
     view = None
     finished = False
 
-    def __init__(self, model, player):
-        self.player = player
+    def __init__(self, model, playerid):
+        self.playerid = playerid
         self.model = model
-        self.view= UIView(model, player.playerid)
-        self.finished = True
+        self.view= UIView(model, playerid)
 
     def help(self):
         print("Valid commands: 'fold', 'call', 'check', 'raise x', 'view cards', 'view chips'")
@@ -46,75 +45,25 @@ class HumanController(Controller):
         print("To see your cards, 'view cards'. To see your chips and the pot, 'view chips'")
         print("Type 'exit' to quit the game.")
 
-    def fold(self, to_call):
-        if not to_call:
-            print("The current bet is 0. Checking instead.")
-        self.finished = True
-        return(self.player.action(to_call, 0))
 
-    def use_view(self, what, to_call):
+    def use_view(self, what):
         if what == 'cards':
             self.view.view_cards()
         elif what == 'chips':
-            self.view.view_chips(to_call)
+            self.view.view_chips()
         else:
             print("You must specify: 'view cards' or 'view chips'")
-
         return
-            
-
-    def call(self, to_call, check=False):
-        if check and to_call:
-            print("Cannot check when there is a bet of {}.".format(to_call))
-            return
-
-        elif to_call >= self.player.chips:
-            print("This would put you all-in. Is that okay? Type y/n.")
-            if input()[0] in ['y','Y']:
-                self.finished = True
-                return(self.player.action(to_call, self.player.chips))
-            else:
-                return
-
-        self.finished = True
-        return(self.player.action(to_call, to_call))
-
-
-    def bet(self, to_call, amount):
-        if amount == None:
-            print("You must specify an amount to bet.")
-            return
-        
-
-        self.finished = True
-        if amount == 'allin':
-            return(self.player.action(to_call, self.player.chips))
-        
-        elif not amount.isdigit():
-            print("You must specify an numeric amount to bet, or exactly 'raise allin'")
-            return
-
-        elif int(amount) > self.player.chips:
-            print("This would put you all-in. Is that okay? Type y/n.")
-            if input()[0] in ['y','Y']:
-                return(self.player.action(to_call, self.player.chips))
-            else:
-                self.finished = False
-                return
-        else:
-            return(self.player.action(to_call, int(amount) + to_call))
 
         
 
-    def get_action(self, to_call):
+    def get_action(self):
         #valid_actions = ['help','fold','call', 'check', 'bet', 'raise', 'see', 'view', 'exit']
-        result = None
-        self.finished = False
 
         print("Your turn!")
-        if to_call:
-            print("The current bet is {}.".format(to_call))
-            if to_call >= self.player.chips:
+        if self.model.to_call:
+            print("The current bet is {}.".format(self.model.to_call))
+            if self.model.to_call >= self.model.players[self.playerid]['chips']:
                 print("You may fold or call. The latter will put you all-in.")
             else:
                 print("You may 'fold', 'call', or 'raise x'.")
@@ -123,53 +72,77 @@ class HumanController(Controller):
         print("Type 'help' for help.")
     
 
-        while not self.finished:
+        while True:
             response = input().split()
             if not response:
                 print("You must enter an action.")
                 continue
+
             action = response[0]
             value = response[1] if len(response) > 1 else None
             
             if action == 'help':
                 self.help()
+
             elif action in ['see','view']:
-                self.use_view(value, to_call)
+                self.use_view(value)
+
             elif action == 'fold':
-                result = self.fold(to_call)
+                if not self.model.to_call:
+                    print("The current bet is 0. Checking instead.")
+                    return(self.model.checkcall())
+                else:
+                    return(self.model.fold())
+
             elif action == 'call':
-                result = self.call(to_call)
+                if self.model.to_call >= self.model.players[self.playerid]['chips']:
+                    print("This would put you all-in. Is that okay? Type y/n.")
+                    if input()[0] not in ['y','Y']:
+                        continue  
+                return(self.model.checkcall())
+
             elif action == 'check':
-                result = self.call(to_call, check=True)
+                if self.model.to_call:
+                    print("Cannot check when there is a bet of {}.".format(self.model.to_call))
+                else:
+                    return(self.model.checkcall())
+
             elif action in ['bet','raise']:
-                result = self.bet(to_call, value)
+                if value:
+                    value = int(value)
+                if value and value <= min(self.model.max_bet,
+                 self.model.players[self.playerid]['chips'] - self.model.to_call) and value >= min(self.model.min_bet, self.model.max_bet):
+                    return(self.model.bet(value))
+                else:
+                    print("You must specify an amount to bet between {} and {}.".format(min(self.model.min_bet, self.model.max_bet),
+                    min(self.model.max_bet,
+                 self.model.players[self.playerid]['chips'] - self.model.to_call)))
+
             elif action == 'exit':
                 exit()
+
             else:
                 print("Invalid action. Type 'help' for help.")
-                
 
-        return(result)
             
 
 class RandomController(Controller):
-    player = None
+    playerid = None
     model = None
 
-    def get_action(self, to_call):
+    def get_action(self):
         # Equal chance to call, raise, or fold.
 
         decision = random.randint(0,2)
 
         if not decision:
-            result = self.player.action(to_call, 0)
+            return(self.model.fold())
         elif decision == 1:
-            result = self.player.action(to_call, to_call)
+            return(self.model.checkcall())
         else:
-            if to_call >= self.player.chips:
-                result = self.player.action(to_call, self.player.chips)
+            raise_amount = random.randint(min(self.model.min_bet, self.model.max_bet), self.model.max_bet)
+            if raise_amount:
+                return(self.model.bet(raise_amount))
             else:
-                raise_amount = random.randint(to_call, self.player.chips)
-                result = self.player.action(to_call, raise_amount)
+                return(self.model.checkcall())
 
-        return(result)

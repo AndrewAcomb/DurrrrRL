@@ -1,7 +1,6 @@
 
 
 # ----Get Rank----
-
 def get_rank(playerid, hole_cards, community):
     
     cards = hole_cards.union(community)
@@ -113,7 +112,6 @@ def get_rank(playerid, hole_cards, community):
 
 def to_tb(arr):
     # Generate tiebreaker from hand
-
     tb = ''   
     for a in arr:
         s = str(a)
@@ -123,15 +121,12 @@ def to_tb(arr):
             tb += s
     return(int(tb))
 
+def card_to_string(card):
+    values = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]
+    suits = ["D", "C", "H", "S"]
+    return(values[card[0]] + suits[card[1]])
 
-
-# ----Rank Hands----
-
-def rank_hands(hole_dict, community):
-
-    hand_ranks = {}
-
-    for k, v in hole_dict.items():
-        hand_ranks[k] = (get_rank(k, v, community))
-    
-    return(hand_ranks)
+def hand_to_string(result):
+    hands = ["a high card", "a pair", "two pair", "three of a kind", "a straight",
+        "a flush", "a full house", "four of a kind", "a straight flush"]
+    return(hands[result])

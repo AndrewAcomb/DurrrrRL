@@ -4,8 +4,8 @@ import game
 def main(argv):
     if argv:
 
-        print("Options besides human vs random with default settings coming soon.")
-        exit()
+        newgame = game.Game('random', 'random', show_output=False)
+        newgame.play_game()
 
 
     else:
