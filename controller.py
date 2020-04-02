@@ -7,6 +7,7 @@ class Controller:
     playerid = None
     model = None
     view = None
+    public = None
     
     def __init__(self, model, playerid, show_output):
         self.playerid = playerid
@@ -36,7 +37,7 @@ class AgentController(Controller):
         # TODO
         return([1/1326]*1326)
 
-    def get_fold_chance(self, bet):
+    def predict_fold_chance(self, bet):
         # TODO
         chance = bet/(2*self.model.max_bet) if self.model.max_bet else 0
         return(chance)
@@ -73,7 +74,7 @@ class AgentController(Controller):
 
             # Get EVs of possible bets
             for bet in range(self.model.min_bet, self.model.max_bet + 1):
-                fold_chance = self.get_fold_chance(bet)
+                fold_chance = self.predict_fold_chance(bet)
                 bet_evs[bet - self.model.min_bet].append(utils.get_bet_ev(self.model.to_call, fold_chance, pot_equity, self.model.pot, bet))
         
         # Normalize probabilities, calculate expected pot equity
@@ -125,7 +126,6 @@ class HumanController(Controller):
     playerid = None
     model = None
     view = None
-    finished = False
 
     def __init__(self, model, playerid):
         self.playerid = playerid
