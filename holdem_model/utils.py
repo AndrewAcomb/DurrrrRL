@@ -194,7 +194,7 @@ def get_bet_ev(to_call, fold_chance, pot_equity, pot, bet):
     # Calculates the expected change in EV for a given bet
 
     # Current EV
-    current_ev = pot_equity * pot
+    current_ev = pot_equity * (pot)
 
     # Change in EV if the opponent folds
     fold_ev =  fold_chance * (pot - current_ev)

@@ -1,7 +1,7 @@
 import holdem_model.table, holdem_model.utils as utils
 from view import UIView, AgentView
 from itertools import combinations
-import random
+import random, json
 
 class Controller:
     playerid = None
@@ -28,6 +28,9 @@ class AgentController(Controller):
         self.playerid = playerid
         self.model = model
         self.view = AgentView(model, playerid)
+        with open('matchups.json') as matchups:
+            self.matchups = eval(matchups.read())
+
     
     def predict_opponent_cards(self):
         # TODO
@@ -38,14 +41,8 @@ class AgentController(Controller):
         chance = bet/(2*self.model.max_bet) if self.model.max_bet else 0
         return(chance)
 
-    def preflop_action(self):
-        # TODO
-        return(self.model.checkcall())
 
     def get_action(self):
-        if not self.model.community_cards:
-            return(self.preflop_action())
-
         deck = {(i,j) for i in range(13) for j in range(4)} - self.model.players[self.playerid]['hand'] - self.model.community_cards
         hands = combinations(deck, 2)
 
@@ -62,8 +59,16 @@ class AgentController(Controller):
             idx = 52*utils.card_to_int(h[0]) - sum([i for i in range(utils.card_to_int(h[0]) + 1)]) + (utils.card_to_int(h[1]) - utils.card_to_int(h[0]) - 1)
             probs.append(opp_pred[idx])
             
+
+
             # Get pot equity    
-            pot_equity = utils.get_pot_equity(deck - set(h), self.model.players[self.playerid]['hand'], set(h), self.model.community_cards)
+            if self.model.community_cards:
+                pot_equity = utils.get_pot_equity(deck - set(h),
+                 self.model.players[self.playerid]['hand'], set(h), self.model.community_cards)
+            else:
+                pot_equity = self.matchups[utils.encode_hole_cards(self.model.players[self.playerid]['hand'])][utils.encode_hole_cards(set(h))]
+                pot_equity /= 100
+            
             scores.append(pot_equity)
 
             # Get EVs of possible bets
@@ -101,6 +106,8 @@ class AgentController(Controller):
                 best = actions[i]
                 best_action = i
 
+        # print(pot_equity)
+        # print({"fold":ev_fold, "checkcall":ev_checkcall, "raise":ev_raise})
 
         if best_action == 0:
             return(self.model.fold())
@@ -182,10 +189,6 @@ class HumanController(Controller):
                     return(self.model.fold())
 
             elif action == 'call':
-                if self.model.to_call >= self.model.players[self.playerid]['chips']:
-                    print("This would put you all-in. Is that okay? Type y/n.")
-                    if input()[0] not in ['y','Y']:
-                        continue  
                 return(self.model.checkcall())
 
             elif action == 'check':
