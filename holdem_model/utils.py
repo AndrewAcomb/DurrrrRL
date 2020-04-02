@@ -1,3 +1,4 @@
+from itertools import combinations
 
 
 # ----Get Rank----
@@ -130,3 +131,77 @@ def hand_to_string(result):
     hands = ["a high card", "a pair", "two pair", "three of a kind", "a straight",
         "a flush", "a full house", "four of a kind", "a straight flush"]
     return(hands[result])
+
+def int_to_card(cardint):
+    return((cardint//4, cardint % 4))
+
+def card_to_int(card):
+    return(card[0] * 4 + card[1])
+
+def encode_hole_cards(hole_cards):
+    faces = {8:'T',9:'J',10:'Q',11:'K',12:'A'}
+    result = ''
+    suit = None
+
+    hc = sorted(list(hole_cards), reverse=True)
+    if hc[0][0] == hc[1][0]:
+        if hc[0][0] in faces:
+            result += faces[hc[0][0]]
+            result += faces[hc[0][0]]
+        else:
+            result += str(hc[0][0] + 2)
+            result += str(hc[0][0] + 2)
+        return(result)
+
+    for card in hc:
+        if card[0] in faces:
+            result += faces[card[0]]
+        else:
+            result += str(card[0] + 2)
+        if card[1] == suit:
+            result += 's'
+        else:
+            suit = card[1]
+    if len(result) < 3:
+        result += 'o'
+    
+    return(result)
+			
+
+
+def get_pot_equity(deck, cards, opp_cards, community):
+    # Takes hands as sets of card tuples
+    
+    num_poss = 0
+    wins = 0.0
+    # Get possible community cards
+    possibilities =  combinations(deck, 5 - len(community)) if len(community) < 5 else [[]]
+
+    # For each possible set of community cards, determine winner
+    for p in possibilities:
+        my_rank = get_rank(0, cards, community.union(set(p)))
+        opp_rank = get_rank(1, opp_cards, community.union(set(p))) 
+        if my_rank[1] > opp_rank[1] or my_rank[1] == opp_rank[1] and my_rank[2] > opp_rank[2]:
+            wins += 1.0
+        elif my_rank[1] == opp_rank[1] and my_rank[2] > opp_rank[2]:
+            wins += 0.5
+        num_poss += 1
+
+    return(wins/num_poss)
+
+
+def get_bet_ev(to_call, fold_chance, pot_equity, pot, bet):
+    # Calculates the expected change in EV for a given bet
+
+    # Current EV
+    current_ev = pot_equity * pot
+
+    # Change in EV if the opponent folds
+    fold_ev =  fold_chance * (pot - current_ev)
+
+    # Change in EV if the opponent calls
+    new_pot = pot + (2 * bet) + to_call
+    cost_of_raising = bet + to_call
+    call_ev = (1 - fold_chance) * (pot_equity * new_pot - current_ev - cost_of_raising)
+
+    return(fold_ev + call_ev)

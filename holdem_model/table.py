@@ -14,7 +14,7 @@ class Table:
     all_in = False
     winner = None
     
-    def __init__(self, buy_in=100, little_blind=1, big_blind=2):
+    def __init__(self, buy_in=200, little_blind=1, big_blind=2):
         self.deck = [(i,j) for i in range(13) for j in range(4)]
         self.community_cards = set({})
         self.players = {}
@@ -90,7 +90,7 @@ class Table:
         self.all_in = False
         self.update_state()
         self.move_blinds()
-        self.min_bet = self.blinds[1]
+        self.min_bet = min(self.blinds[1], self.max_bet)
         if folded == None: 
             return(results)
 
@@ -100,9 +100,8 @@ class Table:
 
         self.to_call = self.players[self.active_player]['chips_in'] -  self.players[1 - self.active_player]['chips_in']
         self.max_bet = min(self.players[self.active_player]['chips'], self.players[1 - self.active_player]['chips'] - self.to_call)
+        self.min_bet = min(self.min_bet, self.max_bet)
         self.pot = self.players[self.active_player]['chips_in'] + self.players[1 - self.active_player]['chips_in']
-        if self.pot < 0:
-            print(self.players, self.pot, self.max_bet, self.min_bet, self.all_in, self.to_call)
         self.active_player = 1 - self.active_player
 
 

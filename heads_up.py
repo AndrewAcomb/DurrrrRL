@@ -1,17 +1,24 @@
-import sys, getopt
+import sys, getopt, math, datetime
 import game
 
 def main(argv):
-    if argv:
+    if not argv:
+        p1 = 'human'
+        p2 = 'random'
 
-        newgame = game.Game('random', 'random', show_output=False)
-        newgame.play_game()
-
+    elif len(argv) == 1:
+        p1 = 'human'
+        p2 = argv[0]
 
     else:
-        
-        newgame = game.Game('human', 'random')
-        newgame.play_game()
+        p1 = argv[0]
+        p2 = argv[1]
+
+    show_output = True if len(argv) > 2 else False
+
+    newgame = game.Game([p1, p2], show_output=show_output)
+    newgame.play_game()
+
 
 
 if __name__ == "__main__":

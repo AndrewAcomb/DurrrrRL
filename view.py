@@ -23,18 +23,17 @@ class AgentView(View):
     model = None
     playerid = 0
 
-    def view_model_state(self):
+    def view_cards(self):
         pass
 
-    def view_hand_results(self):
+    def view_player_action(self, action):
         pass
 
-    def view_history(self):
+    def view_hand_results(self, result=None):
         pass
 
-    def show_player_action(self, pid, prev_pot, to_call, action):
+    def end_game(self, pid):
         pass
-
 
 
 class UIView(View):

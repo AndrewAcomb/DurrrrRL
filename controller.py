@@ -1,5 +1,6 @@
-import holdem_model.table
-from view import UIView
+import holdem_model.table, holdem_model.utils as utils
+from view import UIView, AgentView
+from itertools import combinations
 import random
 
 class Controller:
@@ -22,9 +23,95 @@ class AgentController(Controller):
     playerid = None
     model = None
     view = None
+
+    def __init__(self,model, playerid):
+        self.playerid = playerid
+        self.model = model
+        self.view = AgentView(model, playerid)
     
+    def predict_opponent_cards(self):
+        # TODO
+        return([1/1326]*1326)
+
+    def get_fold_chance(self, bet):
+        # TODO
+        chance = bet/(2*self.model.max_bet) if self.model.max_bet else 0
+        return(chance)
+
+    def preflop_action(self):
+        # TODO
+        return(self.model.checkcall())
+
     def get_action(self):
-        pass
+        if not self.model.community_cards:
+            return(self.preflop_action())
+
+        deck = {(i,j) for i in range(13) for j in range(4)} - self.model.players[self.playerid]['hand'] - self.model.community_cards
+        hands = combinations(deck, 2)
+
+        opp_pred = self.predict_opponent_cards()
+        
+        scores = []
+        probs = []
+        bet_evs = [[] for _ in range(self.model.min_bet, self.model.max_bet + 1)]
+
+        # For each possible opposing hand    
+        for h in hands:
+            
+            # Get the probability of them having it
+            idx = 52*utils.card_to_int(h[0]) - sum([i for i in range(utils.card_to_int(h[0]) + 1)]) + (utils.card_to_int(h[1]) - utils.card_to_int(h[0]) - 1)
+            probs.append(opp_pred[idx])
+            
+            # Get pot equity    
+            pot_equity = utils.get_pot_equity(deck - set(h), self.model.players[self.playerid]['hand'], set(h), self.model.community_cards)
+            scores.append(pot_equity)
+
+            # Get EVs of possible bets
+            for bet in range(self.model.min_bet, self.model.max_bet + 1):
+                fold_chance = self.get_fold_chance(bet)
+                bet_evs[bet - self.model.min_bet].append(utils.get_bet_ev(self.model.to_call, fold_chance, pot_equity, self.model.pot, bet))
+        
+        # Normalize probabilities, calculate expected pot equity
+        probs = [p / sum(probs) for p in probs]
+        pot_equity = sum([scores[i] * probs[i] for i in range(len(probs))])
+
+        # Calculate EV fold: 100% to lose existing equity
+        ev_fold = -1 * pot_equity * self.model.pot
+
+        # Calculate EV check/call: Positive if equity > 0.5
+        ev_checkcall = (2 * self.model.to_call * pot_equity) - self.model.to_call
+        
+        # Calculate EV raise, optimal bet size
+        optimal_bet = 0
+        bets = []
+        ev_raise = -2 * self.model.pot
+        for i in range(len(bet_evs)):
+            b = sum([bet_evs[i][j] * probs[j] for j in range(len(probs))])
+            bets.append(b)
+            if b > ev_raise:
+                ev_raise = b
+                optimal_bet = i
+        
+        # Choose best option
+        actions = [ev_fold, ev_checkcall, ev_raise]
+        best = ev_checkcall
+        best_action = 1
+        for i in range(3):
+            if actions[i] > best:
+                best = actions[i]
+                best_action = i
+
+
+        if best_action == 0:
+            return(self.model.fold())
+        
+        elif best_action == 1:
+            return(self.model.checkcall())
+        
+        else:            
+            return(self.model.bet(optimal_bet + self.model.min_bet))
+        
+
 
 
 class HumanController(Controller):
@@ -140,7 +227,10 @@ class RandomController(Controller):
         elif decision == 1:
             return(self.model.checkcall())
         else:
-            raise_amount = random.randint(min(self.model.min_bet, self.model.max_bet), self.model.max_bet)
+            if self.model.max_bet - self.model.min_bet:
+                raise_amount = random.randint(self.model.min_bet, self.model.max_bet)  
+            else:
+                raise_amount =  self.model.max_bet                
             if raise_amount:
                 return(self.model.bet(raise_amount))
             else:

@@ -7,22 +7,29 @@ class Game:
     controllers = None
     model = None
 
-    def __init__(self, player1, player2, modeL_settings=None, show_output=False):
+    def __init__(self, players, modeL_settings=None, show_output=False):
         # Initialize model without settings 
         if not modeL_settings:
             self.model = table.Table()
 
         self.controllers = {}
-        if player1 == 'human':
-            self.controllers[0] = controller.HumanController(self.model, 0)
+        for i in range(2):
+            if players[i] == 'human':
+                self.controllers[i] = controller.HumanController(self.model, i)
 
-        else:
-            self.controllers[0] = controller.RandomController(self.model, 0, show_output)
+            elif players[i] == 'random':
+                self.controllers[i] = controller.RandomController(self.model, i, show_output)
+                show_output = False
 
-        self.controllers[1] = controller.RandomController(self.model, 1, False)
+            elif players[i] == 'agent':
+                self.controllers[i] = controller.AgentController(self.model, i)
+            else:
+                self.controllers[i] = controller.RandomController(self.model, i, show_output)
+                show_output = False            
 
         if random.randint(0,1):
             self.model.move_blinds()
+
 
     def hand(self):
         # Preflop
@@ -43,6 +50,7 @@ class Game:
                 v['chips'] = 0
                 self.model.all_in = True        
 
+        self.model.min_bet = self.model.blinds[1]
         self.model.update_state()
 
         if not self.model.all_in:
@@ -66,6 +74,7 @@ class Game:
                     v.view.view_cards()    
 
             if not self.model.all_in:
+                self.model.min_bet = self.model.blinds[1]
                 folded = self.round_of_betting()
                 if folded != None:
                     for v in self.controllers.values():
@@ -84,7 +93,6 @@ class Game:
 
     def round_of_betting(self, preflop=False):
 
-        self.model.min_bet = self.model.blinds[1]
         result = self.controllers[self.model.active_player].get_action()
         last_action = result
         self.model.update_state()
@@ -120,9 +128,20 @@ class Game:
 
 
     def play_game(self):
+        a = 0
         while self.model.winner == None:
             self.hand()
+            a += 1
+
         for v in self.controllers.values():
             if v.view:
                 v.view.end_game(self.model.winner)
         
+        return(a)
+
+    def reset_game(self):
+        self.model.players[0]['chips'] = self.model.players[1]['chips'] = self.model.players[self.model.winner]['chips'] // 2
+        self.model.winner = None
+        self.model.all_in = False
+        self.model.active_player = 0
+        self.model.update_state()
