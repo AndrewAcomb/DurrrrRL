@@ -8,7 +8,7 @@ class View:
         self.model = model
         self.playerid = playerid
 
-    def view_player_action(self, pid, prev_pot, to_call, action):
+    def view_player_action(self, action):
         pass
 
     def view_hand_results(self):
@@ -22,12 +22,48 @@ class View:
 class AgentView(View):
     model = None
     playerid = 0
+    states = []
+    history = [[0] * 116] * 20
+    card_preds = []
+    action_preds = []
 
     def view_cards(self):
         pass
 
     def view_player_action(self, action):
-        pass
+
+        # Cards 104
+        state = utils.hand_to_vec(self.model.players[self.playerid]['hand']) 
+        state += utils.hand_to_vec(self.model.community_cards)
+        
+        # Round of betting 105
+        if not self.model.community_cards:
+            state.append(0)
+        else:
+            for i in range(3,6):
+                if len(self.model.community_cards) == i:
+                    state.append(i - 2)
+                    break
+
+        # Position 106
+        state.append(self.model.players[self.playerid]['position'])
+
+        # to_call, min & max bet, pot, active player 111
+        state += [self.model.to_call, self.model.min_bet, self.model.max_bet,
+         self.model.pot, int(self.model.active_player==self.playerid)]
+
+        # stacks 113
+        state += [v['chips'] for v in self.model.players.values()]
+
+        # Action 116
+        state += [int(x == action) for x in range(3)]
+
+        self.history[len(self.states)] = state
+        if len(self.states) != 20:
+            self.states.append(self.history)
+
+
+
 
     def view_hand_results(self, result=None):
         pass

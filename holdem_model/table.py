@@ -14,7 +14,7 @@ class Table:
     all_in = False
     winner = None
     
-    def __init__(self, buy_in=200, little_blind=1, big_blind=2):
+    def __init__(self, buy_in=100, little_blind=1, big_blind=2):
         self.deck = [(i,j) for i in range(13) for j in range(4)]
         self.community_cards = set({})
         self.players = {}
@@ -22,8 +22,8 @@ class Table:
         self.blinds = (little_blind, big_blind)
 
         # Create players
-        self.players[0] = {"id": 0, "chips": buy_in, "position": 0, "chips_in": 0, "hand": set({}), "opponent": 2}
-        self.players[1] = {"id": 1, "chips": buy_in, "position": 1, "chips_in": 0, "hand": set({}), "opponent": 1}
+        self.players[0] = {"id": 0, "chips": buy_in, "position": 0, "chips_in": 0, "hand": set({}), "opponent": 1}
+        self.players[1] = {"id": 1, "chips": buy_in, "position": 1, "chips_in": 0, "hand": set({}), "opponent": 0}
 
 
     def deal(self, to_players=False):
