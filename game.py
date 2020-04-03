@@ -23,6 +23,10 @@ class Game:
 
             elif players[i] == 'agent':
                 self.controllers[i] = controller.AgentController(self.model, i)
+
+            elif players[i] == 'cheater':
+                self.controllers[i] = controller.OmniscientController(self.model, i)
+                
             else:
                 self.controllers[i] = controller.RandomController(self.model, i, show_output)
                 show_output = False            

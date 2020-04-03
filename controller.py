@@ -59,8 +59,6 @@ class AgentController(Controller):
             # Get the probability of them having it
             idx = 52*utils.card_to_int(h[0]) - sum([i for i in range(utils.card_to_int(h[0]) + 1)]) + (utils.card_to_int(h[1]) - utils.card_to_int(h[0]) - 1)
             probs.append(opp_pred[idx])
-            
-
 
             # Get pot equity    
             if self.model.community_cards:
@@ -239,3 +237,41 @@ class RandomController(Controller):
             else:
                 return(self.model.checkcall())
 
+
+class OmniscientController(Controller):
+    playerid = None
+    model = None
+
+    def __init__(self,model, playerid):
+        self.playerid = playerid
+        self.model = model
+        with open('matchups.json') as matchups:
+            self.matchups = eval(matchups.read())
+
+    def get_action(self):
+        
+        myhand = self.model.players[self.playerid]['hand']
+        opphand = self.model.players[1 - self.playerid]['hand']
+
+        #print("Cheater: {}, Player: {}".format(myhand,opphand))
+        
+        if self.model.community_cards:
+            pot_equity = utils.get_pot_equity(self.model.deck, myhand, opphand, self.model.community_cards)
+        else:
+            pot_equity = self.matchups[utils.encode_hole_cards(myhand)][utils.encode_hole_cards(opphand)]
+            pot_equity /= 100
+
+        if pot_equity <= 0.5:
+            if self.model.to_call <= pot_equity * (self.model.pot + self.model.to_call):
+                return(self.model.checkcall())
+            else:
+                return(self.model.fold())
+        else:
+            if not self.model.max_bet:
+                return(self.model.checkcall())
+            confidence = (pot_equity - 0.5)/0.5
+            optionsrange = self.model.max_bet - self.model.min_bet
+            if not optionsrange:
+                return(self.model.bet(self.model.max_bet))
+            else:
+                return(self.model.bet(int(self.model.min_bet + (confidence * optionsrange))))
