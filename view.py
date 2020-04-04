@@ -14,8 +14,6 @@ class View:
     def view_hand_results(self):
         pass
 
-    def view_history(self):
-        pass
 
 
 
@@ -24,19 +22,40 @@ class AgentView(View):
     playerid = 0
     states = []
     history = [[0] * 116] * 20
-    card_preds = []
-    action_preds = []
+
+    # def __init__(self):
+    #     pass
 
     def view_cards(self):
         pass
 
-    def view_player_action(self, action):
 
-        # Cards 104
+    def predict_cards(self, state):
+        # TODO
+        return([0]*52)
+
+    def predict_fold(self, state):
+        # TODO
+        return(0)
+
+    def view_player_action(self, action):
+        """
+        History is a 168 x 20 nested array that is used to generate states.
+        States is a 1d-20d array of 168 x 20 states (will be made into tensors)
+        predict_opponent_cards
+            input: 116x20 (state[53:])
+            output: 52x1 (predicted cards)
+        predict_fold_chance
+            input: 165x20 state[:-3])
+            output: 1x1 (predicted fold chance)
+        """
+
+        # Cards 
+
         state = utils.hand_to_vec(self.model.players[self.playerid]['hand']) 
         state += utils.hand_to_vec(self.model.community_cards)
         
-        # Round of betting 105
+        # Round of betting 
         if not self.model.community_cards:
             state.append(0)
         else:
@@ -45,24 +64,26 @@ class AgentView(View):
                     state.append(i - 2)
                     break
 
-        # Position 106
+        # Position 
         state.append(self.model.players[self.playerid]['position'])
 
-        # to_call, min & max bet, pot, active player 111
+        # to_call, min & max bet, pot, whose turn it is
         state += [self.model.to_call, self.model.min_bet, self.model.max_bet,
          self.model.pot, int(self.model.active_player==self.playerid)]
 
-        # stacks 113
+        # stacks 
         state += [v['chips'] for v in self.model.players.values()]
 
-        # Action 116
+        # Action
         state += [int(x == action) for x in range(3)]
 
+        # TODO: state = predict_opponent_cards(state) + state
+
         self.history[len(self.states)] = state
+        # Actions past the 20th in a hand overwrite the 20th
+        # ~99%+ of hands have <= 20 actions
         if len(self.states) != 20:
             self.states.append(self.history)
-
-
 
 
     def view_hand_results(self, result=None):
@@ -70,6 +91,8 @@ class AgentView(View):
 
     def end_game(self, pid):
         pass
+
+
 
 
 class UIView(View):

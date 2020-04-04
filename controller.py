@@ -34,20 +34,57 @@ class AgentController(Controller):
 
     
     def predict_opponent_cards(self):
-        # TODO
-        return([1/1326]*1326)
+        if self.view.states:
+            pred = self.view.predict_cards(self.view.states[-1])
+        else:
+            # If there have been no actions, assume random opponent cards
+            pred = [1/50 * (1 - x)  for x in  utils.hand_to_vec(self.model.players[self.playerid]['hand'])]
+
+        return(pred)
+        
 
     def predict_fold_chance(self, bet):
-        # TODO
-        chance = bet/(2*self.model.max_bet) if self.model.max_bet else 0
-        return(chance)
+        
+        hist = self.view.history
+
+         # Cards 156
+        state = self.predict_opponent_cards()
+        state += utils.hand_to_vec(self.model.players[self.playerid]['hand']) 
+        state += utils.hand_to_vec(self.model.community_cards)
+        
+        # Round of betting 157
+        if not self.model.community_cards:
+            state.append(0)
+        else:
+            for i in range(3,6):
+                if len(self.model.community_cards) == i:
+                    state.append(i - 2)
+                    break
+
+        # Position 158
+        state.append(self.model.players[self.playerid]['position'])
+
+        new_chips = self.model.players[self.playerid]['chips'] - bet - self.model.to_call
+        new_max_bet = min(new_chips, self.model.players[self.playerid]['chips'] - bet)
+
+        # to_call, min & max bet, pot, whose turn it is 163
+        state += [bet, min(bet, new_max_bet), new_max_bet,
+         self.model.pot + self.model.to_call + bet, 0]
+
+        # stacks 165
+        state += [new_chips, self.model.players[1 - self.playerid]['chips']]
+
+        hist[min(19, len(self.view.states))] = state
+        return(self.view.predict_fold(hist))
+
 
 
     def get_action(self):
         deck = {(i,j) for i in range(13) for j in range(4)} - self.model.players[self.playerid]['hand'] - self.model.community_cards
         hands = combinations(deck, 2)
 
-        opp_pred = self.predict_opponent_cards()
+        pred = self.predict_opponent_cards()
+        opp_pred = [pred[x] * pred[y] for x in range(51) for y in range(x+1, 52)]
         
         scores = []
         probs = []
