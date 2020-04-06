@@ -1,6 +1,9 @@
 # Mac trash
 *.DS_Store
 
+# Testing files
+tftest.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

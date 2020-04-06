@@ -43,16 +43,13 @@ class AgentController(Controller):
         return(pred)
         
 
-    def predict_fold_chance(self, bet):
-        
-        hist = self.view.history
+    def predict_fold_chance(self, opp_pred, bet):
+        # Create hypothetical state for given bet
 
-         # Cards 156
-        state = self.predict_opponent_cards()
-        state += utils.hand_to_vec(self.model.players[self.playerid]['hand']) 
-        state += utils.hand_to_vec(self.model.community_cards)
+         # Cards
+        state = opp_pred + utils.hand_to_vec(self.model.community_cards)
         
-        # Round of betting 157
+        # Round of betting
         if not self.model.community_cards:
             state.append(0)
         else:
@@ -61,30 +58,39 @@ class AgentController(Controller):
                     state.append(i - 2)
                     break
 
-        # Position 158
+        # Position
         state.append(self.model.players[self.playerid]['position'])
 
         new_chips = self.model.players[self.playerid]['chips'] - bet - self.model.to_call
         new_max_bet = min(new_chips, self.model.players[self.playerid]['chips'] - bet)
 
-        # to_call, min & max bet, pot, whose turn it is 163
+        # to_call, min & max bet, pot, stacks, whose turn it is
         state += [bet, min(bet, new_max_bet), new_max_bet,
-         self.model.pot + self.model.to_call + bet, 0]
+         self.model.pot + self.model.to_call + bet, new_chips,
+         self.model.players[1 - self.playerid]['chips'], 1]
 
-        # stacks 165
-        state += [new_chips, self.model.players[1 - self.playerid]['chips']]
 
+        # Add history of hand to hypothetical state
+        hist = self.view.history
         hist[min(19, len(self.view.states))] = state
-        return(self.view.predict_fold(hist))
+
+        return(self.view.predict_action(hist)[0])
 
 
 
     def get_action(self):
-        deck = {(i,j) for i in range(13) for j in range(4)} - self.model.players[self.playerid]['hand'] - self.model.community_cards
+        deck = {(i,j) for i in range(13) for j in range(4)} - \
+             self.model.players[self.playerid]['hand'] - self.model.community_cards
         hands = combinations(deck, 2)
 
         pred = self.predict_opponent_cards()
         opp_pred = [pred[x] * pred[y] for x in range(51) for y in range(x+1, 52)]
+
+        bets = []
+        fold_chances = []
+        for bet in range(self.model.min_bet, self.model.max_bet + 1):
+            bets.append(bet)
+            fold_chances.append(self.predict_fold_chance(opp_pred, bet))
         
         scores = []
         probs = []
@@ -94,7 +100,8 @@ class AgentController(Controller):
         for h in hands:
             
             # Get the probability of them having it
-            idx = 52*utils.card_to_int(h[0]) - sum([i for i in range(utils.card_to_int(h[0]) + 1)]) + (utils.card_to_int(h[1]) - utils.card_to_int(h[0]) - 1)
+            idx = 52*utils.card_to_int(h[0]) - sum([i for i in range(utils.card_to_int(h[0]) + 1)]) + \
+             (utils.card_to_int(h[1]) - utils.card_to_int(h[0]) - 1)
             probs.append(opp_pred[idx])
 
             # Get pot equity    
@@ -102,15 +109,16 @@ class AgentController(Controller):
                 pot_equity = utils.get_pot_equity(deck - set(h),
                  self.model.players[self.playerid]['hand'], set(h), self.model.community_cards)
             else:
-                pot_equity = self.matchups[utils.encode_hole_cards(self.model.players[self.playerid]['hand'])][utils.encode_hole_cards(set(h))]
+                pot_equity = \
+                 self.matchups[utils.encode_hole_cards(self.model.players[self.playerid]['hand'])][utils.encode_hole_cards(set(h))]
                 pot_equity /= 100
             
             scores.append(pot_equity)
 
             # Get EVs of possible bets
-            for bet in range(self.model.min_bet, self.model.max_bet + 1):
-                fold_chance = self.predict_fold_chance(bet)
-                bet_evs[bet - self.model.min_bet].append(utils.get_bet_ev(self.model.to_call, fold_chance, pot_equity, self.model.pot, bet))
+            for i in range(len(fold_chances)):
+                bet_evs[bets[i] - self.model.min_bet].append(utils.get_bet_ev(self.model.to_call,
+                 fold_chances[i], pot_equity, self.model.pot, bets[i]))
         
         # Normalize probabilities, calculate expected pot equity
         probs = [p / sum(probs) for p in probs]
@@ -236,10 +244,12 @@ class HumanController(Controller):
                 if value:
                     value = int(value)
                 if value and value <= min(self.model.max_bet,
-                 self.model.players[self.playerid]['chips'] - self.model.to_call) and value >= min(self.model.min_bet, self.model.max_bet):
+                 self.model.players[self.playerid]['chips'] - self.model.to_call) and value >= min(self.model.min_bet,
+                  self.model.max_bet):
                     return(self.model.bet(value))
                 else:
-                    print("You must specify an amount to bet between {} and {}.".format(min(self.model.min_bet, self.model.max_bet),
+                    print("You must specify an amount to bet between {} and {}.".format(min(self.model.min_bet,
+                     self.model.max_bet),
                     min(self.model.max_bet,
                  self.model.players[self.playerid]['chips'] - self.model.to_call)))
 

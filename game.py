@@ -14,17 +14,17 @@ class Game:
 
         self.controllers = {}
         for i in range(2):
-            if players[i] == 'human':
+            if players[i] in ['human', 'player']:
                 self.controllers[i] = controller.HumanController(self.model, i)
 
             elif players[i] == 'random':
                 self.controllers[i] = controller.RandomController(self.model, i, show_output)
                 show_output = False
 
-            elif players[i] == 'agent':
+            elif players[i] in ['agent', 'bot']:
                 self.controllers[i] = controller.AgentController(self.model, i)
 
-            elif players[i] == 'cheater':
+            elif players[i] in ['cheater','omniscient']:
                 self.controllers[i] = controller.OmniscientController(self.model, i)
                 
             else:
@@ -35,6 +35,7 @@ class Game:
             self.model.move_blinds()
 
 
+
     def hand(self):
         # Preflop
         self.model.deal(to_players=True)
@@ -43,8 +44,7 @@ class Game:
             if v.view:
                 v.view.view_cards()  
 
-        # Get little blind, deael with blinds
-
+        # Get little blind, deal with blinds
         for v in self.model.players.values():
             if v['chips'] > self.model.blinds[v['position']]:
                 v['chips'] -= self.model.blinds[v['position']]
@@ -57,6 +57,7 @@ class Game:
         self.model.min_bet = self.model.blinds[1]
         self.model.update_state()
 
+        # Pre-Flop
         if not self.model.all_in:
             folded = self.round_of_betting(preflop=True)
             if folded != None:
@@ -97,28 +98,32 @@ class Game:
 
     def round_of_betting(self, preflop=False):
 
+        prev_state = [self.model.to_call, self.model.min_bet, self.model.max_bet, self.model.pot,
+        self.model.players[0]['chips'], self.model.players[1]['chips']]
+
         result = self.controllers[self.model.active_player].get_action()
         last_action = result
         self.model.update_state()
 
         for v in self.controllers.values():
             if v.view:         
-                v.view.view_player_action(result)          
+                v.view.view_player_action(result, prev_state)          
 
         if not result:
             return(1 - self.model.active_player)
 
-
         # Repeat as long as players reraise
         while True:
 
+            prev_state = [self.model.to_call, self.model.min_bet, self.model.max_bet, self.model.pot,
+            self.model.players[0]['chips'], self.model.players[1]['chips']]
             result = self.controllers[self.model.active_player].get_action()
             self.model.update_state()
 
             # Display result
             for v in self.controllers.values():
                 if v.view:         
-                    v.view.view_player_action(result)   
+                    v.view.view_player_action(result, prev_state)   
 
             # Player folded
             if not result:
@@ -128,7 +133,6 @@ class Game:
                 return(None)
 
             last_action = result
-
 
 
     def play_game(self):

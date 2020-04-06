@@ -1,5 +1,5 @@
 import random
-from . import player, utils
+from . import utils
 
 class Table:
     players = {}
@@ -99,7 +99,9 @@ class Table:
         # To be called after each action
 
         self.to_call = self.players[self.active_player]['chips_in'] -  self.players[1 - self.active_player]['chips_in']
-        self.max_bet = min(self.players[self.active_player]['chips'], self.players[1 - self.active_player]['chips'] - self.to_call)
+        self.max_bet = min(self.players[self.active_player]['chips'],
+         self.players[1 - self.active_player]['chips'] - self.to_call)
+
         self.min_bet = min(self.min_bet, self.max_bet)
         self.pot = self.players[self.active_player]['chips_in'] + self.players[1 - self.active_player]['chips_in']
         self.active_player = 1 - self.active_player
