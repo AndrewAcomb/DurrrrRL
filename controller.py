@@ -46,8 +46,8 @@ class AgentController(Controller):
     def predict_fold_chance(self, opp_pred, bet):
         # Create hypothetical state for given bet
 
-         # Cards
-        state = opp_pred + utils.hand_to_vec(self.model.community_cards)
+         # predicted opponent cards, dummy cards, community cards
+        state = opp_pred + [0 for _ in range(52)] + utils.hand_to_vec(self.model.community_cards)
         
         # Round of betting
         if not self.model.community_cards:
@@ -69,10 +69,13 @@ class AgentController(Controller):
          self.model.pot + self.model.to_call + bet, new_chips,
          self.model.players[1 - self.playerid]['chips'], 1]
 
+        # dummy action
+        state += [0,0,0]
 
         # Add history of hand to hypothetical state
         hist = self.view.history
         hist[min(19, len(self.view.states))] = state
+
 
         return(self.view.predict_action(hist)[0])
 
@@ -90,7 +93,7 @@ class AgentController(Controller):
         fold_chances = []
         for bet in range(self.model.min_bet, self.model.max_bet + 1):
             bets.append(bet)
-            fold_chances.append(self.predict_fold_chance(opp_pred, bet))
+            fold_chances.append(self.predict_fold_chance(pred, bet))
         
         scores = []
         probs = []

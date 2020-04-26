@@ -16,6 +16,10 @@ def main(argv):
 
     show_output = True if len(argv) > 2 else False
 
+    # For interactive testing: python3 heads_up.py human agent
+    # For initial training: python3 heads_up.py agent omniscient
+    # For later training: python3 heads_up.py agent agent
+
     newgame = game.Game([p1, p2], show_output=show_output)
     newgame.play_game()
 

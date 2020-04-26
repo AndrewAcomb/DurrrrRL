@@ -2,6 +2,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import holdem_model.table as table,  holdem_model.utils as utils
 import tensorflow as tf
+import  numpy as np
 from tensorflow import keras
 
 class View:
@@ -43,14 +44,20 @@ class AgentView(View):
 
     def predict_cards(self, state, labels=None):
         # Given a state, predict what cards the opponent is holding
-        example = [x[52:] for x in state]
+        print([np.shape(x) for x in state])
+        example = np.array([x[52:] for x in state])
+        print("cards", np.shape(example), np.shape(example[0]))
+        print(np.shape(example.reshape((1, 20, 116))))
         pred = self.card_model.predict([example])
         return(pred.tolist()[0])
 
 
     def predict_action(self, state, labels=None):
         # Given a state, predict the opponent's next action
-        example = [x[:52] + x[104:-3] for x in state]
+        print([np.shape(x) for x in state])
+        example = np.array([x[:52] + x[104:-3] for x in state])
+        print("action", np.shape(example), np.shape(example[0]))
+        print(np.shape(example.reshape((20, 113))))
         pred = self.card_model.predict([example])
         return(pred.tolist()[0])
         
@@ -62,14 +69,21 @@ class AgentView(View):
             NOTE- Each state includes the history of the hand until that point.
         predict_opponent_cards
             input: 116x20 (state[52:])
+            (state, not including predicted cards)
             output: 52x1 (predicted cards)
         predict_fold_chance
-            input: 113x20  (state[:52] + state[104:-3])
+            input: 165x20  (state[:52] + state[104:-3]) 
+            (state, not including your cards and their action)
             output: 1x1 (predicted fold chance)
         """
 
-        # Cards 
+        # Predicted opponent's cards - idx 51
+        fake_pred = [0 for _ in range(52)]
+
+        # Own cards - idx 103
         state = utils.hand_to_vec(self.model.players[self.playerid]['hand']) 
+
+        # Community cards - idx 155
         state += utils.hand_to_vec(self.model.community_cards)
 
         # Round of betting - idx 156
@@ -78,11 +92,11 @@ class AgentView(View):
         else:
             for i in range(3,6):
                 if len(self.model.community_cards) == i:
-                    state.append(i - 2)
+                    state.append(int(i - 2))
                     break
 
         # Position index 157
-        state.append(self.model.players[self.playerid]['position'])
+        state.append(int(self.model.players[self.playerid]['position']))
 
         # to_call, min & max bet, pot, stacks. index 163
         if self.playerid:
@@ -97,7 +111,7 @@ class AgentView(View):
 
         # Prediction of opponent's cards
         temp_history = self.history
-        temp_history[len(self.states)] = [0 for _ in range(52)] + state
+        temp_history[len(self.states)] = fake_pred + state
         state = self.predict_cards(temp_history) + state
         self.history[len(self.states)] = state
         # Actions past the 20th in a hand overwrite the 20th
