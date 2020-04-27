@@ -37,28 +37,28 @@ class AgentView(View):
         self.model = model
         self.playerid = playerid
         self.states = []
-        self.history = [[0] * 168] * 20
+        self.history = [[0.0] * 168] * 20
         self.card_model = tf.keras.models.load_model('./agent_models/card_model.h5')
         self.action_model = tf.keras.models.load_model('./agent_models/action_model.h5')
 
 
     def predict_cards(self, state, labels=None):
         # Given a state, predict what cards the opponent is holding
-        print([np.shape(x) for x in state])
-        example = np.array([x[52:] for x in state])
-        print("cards", np.shape(example), np.shape(example[0]))
-        print(np.shape(example.reshape((1, 20, 116))))
-        pred = self.card_model.predict([example])
+        #example = np.expand_dims([x[52:] for x in state],0)
+        #example = tf.convert_to_tensor(example)
+        example = [[[0.0] * 116] * 20]
+        print("cards", tf.shape(example))
+        pred = self.card_model.predict(example)
         return(pred.tolist()[0])
 
 
     def predict_action(self, state, labels=None):
         # Given a state, predict the opponent's next action
-        print([np.shape(x) for x in state])
-        example = np.array([x[:52] + x[104:-3] for x in state])
-        print("action", np.shape(example), np.shape(example[0]))
-        print(np.shape(example.reshape((20, 113))))
-        pred = self.card_model.predict([example])
+        #example = np.expand_dims([x[:52] + x[104:-3] for x in state],0)
+        #example = tf.convert_to_tensor(example)
+        example = [[[0.0] * 113] * 20]
+        print("action", tf.shape(example))
+        pred = self.action_model.predict(example)
         return(pred.tolist()[0])
         
 
@@ -72,13 +72,13 @@ class AgentView(View):
             (state, not including predicted cards)
             output: 52x1 (predicted cards)
         predict_fold_chance
-            input: 165x20  (state[:52] + state[104:-3]) 
+            input: 113x20  (state[:52] + state[104:-3]) 
             (state, not including your cards and their action)
             output: 1x1 (predicted fold chance)
         """
 
         # Predicted opponent's cards - idx 51
-        fake_pred = [0 for _ in range(52)]
+        fake_pred = [0.0 for _ in range(52)]
 
         # Own cards - idx 103
         state = utils.hand_to_vec(self.model.players[self.playerid]['hand']) 
@@ -88,30 +88,32 @@ class AgentView(View):
 
         # Round of betting - idx 156
         if not self.model.community_cards:
-            state.append(0)
+            state.append(0.0)
         else:
             for i in range(3,6):
                 if len(self.model.community_cards) == i:
-                    state.append(int(i - 2))
+                    state.append(float(i - 2))
                     break
 
         # Position index 157
-        state.append(int(self.model.players[self.playerid]['position']))
+        state.append(float(self.model.players[self.playerid]['position']))
 
         # to_call, min & max bet, pot, stacks. index 163
         if self.playerid:
-            prev_state = prev_state[:-2] + [prev_state[-1], [prev_state[-2]]]
-        state += prev_state
+            prev_state = prev_state[:-2] + [prev_state[-1], prev_state[-2]]
+        state += [float(x) for x in prev_state]
 
         # Whether it was just the opponent's turn. index 164
-        state.append(int(self.model.active_player==self.playerid))
+        state.append(float(self.model.active_player==self.playerid))
 
         # Action idx 167
-        state += [int(x == action) for x in range(3)]
+        state += [float(x == action) for x in range(3)]
+        state = fake_pred + state
+
 
         # Prediction of opponent's cards
         temp_history = self.history
-        temp_history[len(self.states)] = fake_pred + state
+        temp_history[len(self.states)] = state
         state = self.predict_cards(temp_history) + state
         self.history[len(self.states)] = state
         # Actions past the 20th in a hand overwrite the 20th
@@ -138,6 +140,12 @@ class AgentView(View):
             opp_hand = utils.hand_to_vec(self.model.players[1 - self.playerid]['hand'])
         card_labels = [opp_hand for _ in range(len(card_examples))]
 
+        # FAKE DATA TO ENSURE TRAINING WORKS. TODO: Format actual data properly
+        card_examples = [[[0.0] * 116] * 20] * 5
+        card_labels = [[0.0] * 52] * 5
+        action_examples = [[[0.0] * 113] * 20] * 5
+        action_labels = [[0.0] * 3] * 5
+
         # Train opponent's hand predictor
         self.card_model.fit(card_examples, card_labels, epochs = 1, batch_size = 1, verbose = 0)
 
@@ -146,14 +154,13 @@ class AgentView(View):
 
         # Remove history of hand
         self.states = []
-        self.history = [[0] * 168] * 20
-
-
+        self.history = [[0.0] * 168] * 20
 
 
 
 
     def end_game(self, pid):
+        print("saving model")
         self.card_model.save('./agent_models/card_model.h5')
         self.action_model.save('./agent_models/action_model.h5')
 

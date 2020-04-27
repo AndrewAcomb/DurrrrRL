@@ -170,10 +170,10 @@ def encode_hole_cards(hole_cards):
 
 def hand_to_vec(hand):
     temp_deck = [(i,j) for i in range(13) for j in range(4)]
-    results = [0] * 52
+    results = [0.0] * 52
     for i in range(52):
         if temp_deck[i] in hand:
-            results[i] = 1
+            results[i] = 1.0
     return(results)
         
 

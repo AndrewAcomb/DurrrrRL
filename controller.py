@@ -72,10 +72,12 @@ class AgentController(Controller):
         # dummy action
         state += [0,0,0]
 
+        # Coerce to float
+        state = [float(x) for x in state]
+
         # Add history of hand to hypothetical state
         hist = self.view.history
         hist[min(19, len(self.view.states))] = state
-
 
         return(self.view.predict_action(hist)[0])
 
