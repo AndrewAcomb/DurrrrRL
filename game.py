@@ -140,7 +140,6 @@ class Game:
         while self.model.winner == None:
             self.hand()
             a += 1
-        print(self.model.winner)
         for v in self.controllers.values():
             if v.view:
                 v.view.end_game(self.model.winner)

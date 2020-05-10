@@ -155,8 +155,6 @@ class AgentController(Controller):
                 best = actions[i]
                 best_action = i
 
-        # print(pot_equity)
-        # print({"fold":ev_fold, "checkcall":ev_checkcall, "raise":ev_raise})
 
         if best_action == 0:
             return(self.model.fold())
@@ -164,8 +162,11 @@ class AgentController(Controller):
         elif best_action == 1:
             return(self.model.checkcall())
         
-        else:            
-            return(self.model.bet(optimal_bet + self.model.min_bet))
+        else:
+            if optimal_bet + self.model.min_bet:
+                return(self.model.bet(optimal_bet + self.model.min_bet))
+            else:
+                return(self.model.checkcall())
         
 
 
@@ -305,7 +306,6 @@ class OmniscientController(Controller):
         myhand = self.model.players[self.playerid]['hand']
         opphand = self.model.players[1 - self.playerid]['hand']
 
-        #print("Cheater: {}, Player: {}".format(myhand,opphand))
         
         if self.model.community_cards:
             pot_equity = utils.get_pot_equity(self.model.deck, myhand, opphand, self.model.community_cards)
@@ -324,6 +324,14 @@ class OmniscientController(Controller):
             confidence = (pot_equity - 0.5)/0.5
             optionsrange = self.model.max_bet - self.model.min_bet
             if not optionsrange:
-                return(self.model.bet(self.model.max_bet))
+                if self.model.max_bet:
+                    return(self.model.bet(self.model.max_bet))
+                else:
+                    return(self.model.checkcall())
+                    
             else:
-                return(self.model.bet(int(self.model.min_bet + (confidence * optionsrange))))
+                to_bet = int(self.model.min_bet + (confidence * optionsrange))
+                if to_bet:
+                    return(self.model.bet(to_bet))
+                else:
+                    return(self.model.checkcall())

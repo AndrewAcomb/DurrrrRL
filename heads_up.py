@@ -24,6 +24,13 @@ def main(argv):
     newgame.play_game()
 
 
+    if p1 == "agent" and p2 in ["cheater", "omniscient"]:
+        num_hands = []
+        while True:
+            nh = newgame.play_game()
+            print(nh)
+            num_hands.append(nh)
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

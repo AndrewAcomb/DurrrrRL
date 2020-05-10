@@ -91,7 +91,7 @@ class Table:
         self.update_state()
         self.move_blinds()
         self.min_bet = min(self.blinds[1], self.max_bet)
-        if folded == None: 
+        if folded == None:
             return(results)
 
 

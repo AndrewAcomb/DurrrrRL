@@ -32,6 +32,8 @@ class AgentView(View):
     history = []
     card_model = None
     action_model = None
+    action_count = -1
+    training_actions = []
 
     def __init__(self, model, playerid):
         self.model = model
@@ -44,20 +46,14 @@ class AgentView(View):
 
     def predict_cards(self, state, labels=None):
         # Given a state, predict what cards the opponent is holding
-        #example = np.expand_dims([x[52:] for x in state],0)
-        #example = tf.convert_to_tensor(example)
-        example = [[[0.0] * 116] * 20]
-        print("cards", tf.shape(example))
+        example = [[x[52:] for x in state]]
         pred = self.card_model.predict(example)
         return(pred.tolist()[0])
 
 
     def predict_action(self, state, labels=None):
         # Given a state, predict the opponent's next action
-        #example = np.expand_dims([x[:52] + x[104:-3] for x in state],0)
-        #example = tf.convert_to_tensor(example)
-        example = [[[0.0] * 113] * 20]
-        print("action", tf.shape(example))
+        example = [[x[:52] + x[104:-3] for x in state]]
         pred = self.action_model.predict(example)
         return(pred.tolist()[0])
         
@@ -67,6 +63,8 @@ class AgentView(View):
         History is a 168 x 20 nested array that is used to generate states.
         States is a 1d-20d array of 168 x 20 states (will be made into tensors)
             NOTE- Each state includes the history of the hand until that point.
+            Actions past the 20th in a hand are ignored. 
+            This is fine since 99%+ hands have fewer than 20 states.
         predict_opponent_cards
             input: 116x20 (state[52:])
             (state, not including predicted cards)
@@ -76,6 +74,11 @@ class AgentView(View):
             (state, not including your cards and their action)
             output: 1x1 (predicted fold chance)
         """
+
+        self.action_count += 1
+
+        if self.action_count == 20:
+            return
 
         # Predicted opponent's cards - idx 51
         fake_pred = [0.0 for _ in range(52)]
@@ -107,55 +110,55 @@ class AgentView(View):
         state.append(float(self.model.active_player==self.playerid))
 
         # Action idx 167
+        action = min(action, 2)
         state += [float(x == action) for x in range(3)]
         state = fake_pred + state
 
+        # Set history
 
-        # Prediction of opponent's cards
         temp_history = self.history
         temp_history[len(self.states)] = state
-        state = self.predict_cards(temp_history) + state
+
+        state = self.predict_cards(temp_history) + state[52:]
         self.history[len(self.states)] = state
-        # Actions past the 20th in a hand overwrite the 20th
-        # ~99%+ of hands have <= 20 actions
-        if len(self.states) != 20:
+
+        # If it was opponent's action, add to training examples
+        if state[164]:
             self.states.append(self.history)
+            self.training_actions.append(self.action_count)
 
 
     def view_hand_results(self, result=None):
-        card_examples = action_examples = action_labels = []
+        card_examples = []
+        action_examples = []
+        action_labels = []
 
         # Get training examples
         for i in range(len(self.states)):
-            # 164th element of a state = Whether action occured on opponent's turn
-            if self.states[i][i][164]: 
-                card_examples.append([s[52:] for s in self.states[i]])
-                action_examples.append([s[:52] + s[104:-3] for s in self.states[i]])
-                action_labels.append(s[-3:] for s in self.states[i])
+            card_examples.append([s[52:] for s in self.states[i]])
+            action_examples.append([s[:52] + s[104:-3] for s in self.states[i]])
+            action_labels.append(self.states[i][self.training_actions[i]][-3:])
         
         # Get opponent's actual cards
         if result:
             opp_hand = utils.hand_to_vec(result[4 - self.playerid])
         else:
             opp_hand = utils.hand_to_vec(self.model.players[1 - self.playerid]['hand'])
+
         card_labels = [opp_hand for _ in range(len(card_examples))]
 
-        # FAKE DATA TO ENSURE TRAINING WORKS. TODO: Format actual data properly
-        card_examples = [[[0.0] * 116] * 20] * 5
-        card_labels = [[0.0] * 52] * 5
-        action_examples = [[[0.0] * 113] * 20] * 5
-        action_labels = [[0.0] * 3] * 5
 
-        # Train opponent's hand predictor
-        self.card_model.fit(card_examples, card_labels, epochs = 1, batch_size = 1, verbose = 0)
-
-        # Train action predictor
-        self.action_model.fit(action_examples, action_labels, epochs = 1, batch_size = 1, verbose = 0)
+        for i in range(len(card_examples)):
+            # Train opponent's hand predictor
+            self.card_model.fit([card_examples[i]], [card_labels[i]], epochs = 1, batch_size = 1, verbose = 0)
+            # Train action predictor
+            self.action_model.fit([action_examples[i]], [action_labels[i]], epochs = 1, batch_size = 1, verbose = 0)
 
         # Remove history of hand
         self.states = []
         self.history = [[0.0] * 168] * 20
-
+        self.action_count = -1
+        self.training_actions = []
 
 
 
