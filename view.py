@@ -77,7 +77,8 @@ class AgentView(View):
 
         self.action_count += 1
 
-        if self.action_count == 20:
+        # Dont train if player1. For agent v agent training.
+        if self.playerid or self.action_count == 20:
             return
 
         # Predicted opponent's cards - idx 51
@@ -164,8 +165,9 @@ class AgentView(View):
 
     def end_game(self, pid):
         print("saving model")
-        self.card_model.save('./agent_models/card_model.h5')
-        self.action_model.save('./agent_models/action_model.h5')
+        if not self.playerid:
+            self.card_model.save('./agent_models/card_model.h5')
+            self.action_model.save('./agent_models/action_model.h5')
 
 
 

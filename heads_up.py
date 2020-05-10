@@ -31,6 +31,17 @@ def main(argv):
             print(nh)
             num_hands.append(nh)
 
+    if p1 == p2 and p1 == "agent":
+        num_hands = []
+        for _ in range(10000):
+            nh = newgame.play_game()
+            print(nh)
+            num_hands.append(nh)
+    
+        with open('results.txt', 'w') as resultsfile:
+            resultsfile.write(str(num_hands))
+
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
